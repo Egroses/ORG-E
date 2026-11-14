@@ -1,0 +1,119 @@
+<!doctype html>
+<!-- Guided missions: board, field report and glossary. AI-assisted code (Claude Code). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Missions · SPHEREx Blink</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/missions.css">
+<script src="/site.js"></script>
+<script src="/missions-data.js"></script>
+</head>
+<body>
+<site-header active="missions"></site-header>
+<main class="mboard wrap">
+  <div class="page-head">
+    <p class="t-micro c-3">Guided missions</p>
+    <h1 class="t-heading">Learn to read SPHEREx, one target at a time</h1>
+    <p class="t-lead c-2">Five short missions on the challenge targets. Each one teaches a tool of the viewer, asks you to find the object yourself, and then checks your answer against the catalogue and the measurements.</p>
+    <div class="mprogress"><div class="mbar"><i id="bar" style="width:0"></i></div><span id="count" class="t-label c-2"></span></div>
+  </div>
+
+  <section class="msection" aria-labelledby="howTitle">
+    <h2 id="howTitle" class="t-title">How a mission works</h2>
+    <div class="mflow">
+      <div><p class="t-label">Open the field</p><p class="t-caption c-3">The viewer opens on the target with the band that suits it.</p></div>
+      <div><p class="t-label">Follow the steps</p><p class="t-caption c-3">The panel on the left ticks each step off as you do it in the viewer.</p></div>
+      <div><p class="t-label">Mark the object</p><p class="t-caption c-3">Click the source you think it is. The viewer measures it for you.</p></div>
+      <div><p class="t-label">File a report</p><p class="t-caption c-3">Say what it did: moved, changed brightness, or neither.</p></div>
+      <div><p class="t-label">Compare with the data</p><p class="t-caption c-3">Your answer is checked against catalogue motion and the measured change.</p></div>
+    </div>
+  </section>
+
+  <section class="msection" aria-labelledby="listTitle">
+    <h2 id="listTitle" class="t-title">Missions</h2>
+    <div class="mcards" id="cards"></div>
+  </section>
+
+  <section class="msection" id="report" aria-labelledby="repTitle">
+    <div class="row between" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <h2 id="repTitle" class="t-title">Field report</h2>
+      <div id="resetBox" style="display:flex;gap:8px;align-items:center"></div>
+    </div>
+    <p class="t-body c-2" id="repLead"></p>
+    <div class="mreport" id="rep"></div>
+  </section>
+
+  <section class="msection" aria-labelledby="glTitle">
+    <h2 id="glTitle" class="t-title">Words used in the viewer</h2>
+    <div class="mgloss">
+      <div><p class="t-label">Visit (epoch)</p><p class="t-caption c-2">SPHEREx scans the whole sky every six months. All exposures of one spot taken close together in time are averaged into one image per visit.</p></div>
+      <div><p class="t-label">Band (detector D1–D6)</p><p class="t-caption c-2">SPHEREx has six detectors, each covering part of 0.75–5 µm. D1 is the shortest wavelength, D6 the longest. Cold objects glow most in D5–D6.</p></div>
+      <div><p class="t-label">102 channels</p><p class="t-caption c-2">A filter that changes colour across each detector splits the range into 102 spectral channels, 17 per band. Every exposure sees a spot at one of them.</p></div>
+      <div><p class="t-label">Blink</p><p class="t-caption c-2">The visits shown one after another. A source that moved jumps; one that changed brightness flickers.</p></div>
+      <div><p class="t-label">Difference</p><p class="t-caption c-2">One visit minus another. Unchanged stars cancel; a moved source leaves a blue–red pair, a brightened one a single spot.</p></div>
+      <div><p class="t-label">Stack</p><p class="t-caption c-2">All visits averaged: the deepest view, where faint sources stand out from the noise.</p></div>
+      <div><p class="t-label">Proper motion</p><p class="t-caption c-2">How fast a star crosses the sky, in arcseconds per year. Only nearby objects move enough for SPHEREx to see.</p></div>
+      <div><p class="t-label">Arcsecond (″)</p><p class="t-caption c-2">1/3600 of a degree. One SPHEREx pixel spans 6.15″, about the width of a coin seen from 600 metres.</p></div>
+      <div><p class="t-label">Light curve</p><p class="t-caption c-2">Brightness against time. Pulsating and dust-hidden stars show rises and dips.</p></div>
+      <div><p class="t-label">σ (sigma)</p><p class="t-caption c-2">The noise level. A change of 5σ or more is very unlikely to be noise.</p></div>
+    </div>
+  </section>
+  <p class="t-caption c-3" id="teamLine"></p>
+</main>
+<site-footer></site-footer>
+<script>
+"use strict";
+(() => {
+  const M = Missions, $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const chipLabel = id => M.CHIPS.find(c => c.id === id)?.label || "";
+  function render() {
+    const res = M.progress().results, done = M.LIST.filter(m => res[m.id]), act = M.active();
+    $("bar").style.width = `${done.length / M.LIST.length * 100}%`;
+    $("count").textContent = `${done.length} of ${M.LIST.length} missions filed`;
+    $("cards").innerHTML = M.LIST.map(m => {
+      const r = res[m.id], live = act?.id === m.id && !act.reported;
+      return `<article class="card mcard">
+        <div class="head"><span class="mnum">${m.n}</span>${r ? `<span class="mtag ${r.outcome}">${M.OUTCOME[r.outcome]}</span>` : live ? `<span class="mtag">In progress</span>` : `<span class="mtag todo">Not started</span>`}</div>
+        <div><h3 class="t-title">${esc(m.nick)}</h3><p class="t-caption c-3">${esc(m.target)} · ${esc(m.object)}</p></div>
+        <p class="t-body c-2">${esc(m.mission)}</p>
+        <div class="meta"><span class="tag"><i class="dot" style="color:${m.kind === "moves" ? "var(--accent-primary)" : "var(--status-warning)"}"></i>${m.kind === "moves" ? "Moves" : "Varies"}</span><span class="tag line">Skill: ${esc(m.skill)}</span><span class="tag line">opens in D${m.det}</span></div>
+        <ol class="grow">${m.steps.map(s => `<li>${esc(s.text)}</li>`).join("")}</ol>
+        <hr class="div">
+        <div class="acts"><a class="pill sm ${r ? "" : "primary"}" href="#" data-start="${m.id}">${ico("target", 14)}${r ? "Play again" : live ? "Continue" : "Start mission"}</a><a class="linkrow" href="/explore?ra=${m.ra}&dec=${m.dec}&det=${m.det}">Open without guidance ${ico("arrow", 14)}</a></div>
+      </article>`;
+    }).join("");
+    const cands = (() => { try { return JSON.parse(localStorage.getItem("spx.candidates") || "[]").length; } catch { return 0; } })();
+    const great = done.filter(m => res[m.id].outcome === "great").length;
+    $("repLead").textContent = done.length
+      ? `${great} of ${done.length} filed reports agree with the data. First attempts count; later ones are practice.${cands ? ` You also saved ${cands} candidate${cands === 1 ? "" : "s"} in Explore.` : ""}`
+      : "No reports yet. Your results appear here as you finish missions. They are kept in this browser only.";
+    $("rep").innerHTML = M.LIST.map(m => {
+      const r = res[m.id];
+      if (!r) return `<div><p class="t-label">${m.n}. ${esc(m.nick)}</p><p class="t-caption c-3">Not filed</p></div>`;
+      return `<div><p class="t-label">${m.n}. ${esc(m.nick)}</p><span class="mtag ${r.outcome}">${M.OUTCOME[r.outcome]}</span>
+        <p class="t-caption c-2">You said: ${esc(chipLabel(r.chip))}</p>
+        ${r.shift ? `<p class="t-mono c-3">measured ${r.shift.arcsec}″ ± ${r.shift.err}″</p>` : ""}
+        <p class="t-caption c-3">${r.attempts > 1 ? `${r.attempts} attempts` : "1 attempt"} · ${new Date(r.at).toLocaleDateString("en-GB")}</p></div>`;
+    }).join("");
+    $("resetBox").innerHTML = done.length ? `<button type="button" class="pill sm" id="reset">Reset progress</button>` : "";
+  }
+  document.addEventListener("click", ev => {
+    const s = ev.target.closest("[data-start]");
+    if (s) { ev.preventDefault(); location.href = M.start(s.dataset.start); return; }
+    if (ev.target.closest("#reset")) { $("resetBox").innerHTML = `<span class="t-caption c-2">Erase all mission results?</span><button type="button" class="pill sm" id="resetNo">Keep</button><button type="button" class="pill sm primary" id="resetYes">Erase</button>`; return; }
+    if (ev.target.closest("#resetNo")) render();
+    if (ev.target.closest("#resetYes")) { M.resetProgress(); render(); }
+  });
+  render();
+  fetch("/api/health").then(r => r.json()).then(h => {
+    $("teamLine").textContent = `Team backend connected (${h.real?.length ?? 0} endpoints; archive downloads ${h.live_queries ? "on" : "off, cached data only"}). Light curves and pipeline spectra come from it; images, catalogues and Blink’s spectrum from the SPHEREx Blink service.`;
+  }).catch(() => { $("teamLine").textContent = "Team backend not reachable: missions still work, but light curves and pipeline spectra are unavailable."; });
+})();
+</script>
+</body>
+</html>

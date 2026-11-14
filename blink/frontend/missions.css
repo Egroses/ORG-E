@@ -1,0 +1,70 @@
+/* Guided missions (viewer panel, report dialogs, mission board). AI-assisted code (Claude Code).
+   Uses only the design tokens of site.css, so both themes follow automatically. */
+
+/* ---------- panel in the viewer ---------- */
+.mission { display: flex; flex-direction: column; gap: 10px; }
+.mission .row { flex-wrap: wrap; gap: 8px; }
+.mission .mlink:hover { color: var(--text-primary); }
+.msteps { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.msteps li { display: flex; gap: 8px; align-items: flex-start; color: var(--text-muted); }
+.msteps li > i { display: grid; place-items: center; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; border: 1.5px solid var(--border-default); font: 600 10px/1 var(--sans); font-style: normal; flex: none; }
+.msteps li > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.msteps li.cur { color: var(--text-primary); }
+.msteps li.cur > i { border-color: var(--accent-primary); color: var(--accent-primary); }
+.msteps li.done { color: var(--text-secondary); }
+.msteps li.done > i { border: 0; background: var(--status-success); color: #fff; }
+.msteps .hint { padding-left: 8px; border-left: 2px solid var(--accent-primary); }
+.mwhy summary { cursor: pointer; color: var(--text-secondary); list-style-position: inside; }
+.mwhy summary:hover { color: var(--text-primary); }
+.mwhy p { margin-top: 6px; }
+.mwarn { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 10px; border: 1px solid var(--status-warning); }
+.warnline { display: flex; gap: 6px; align-items: flex-start; color: var(--status-warning); }
+.warnline svg { margin-top: 2px; }
+.mtag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font: 500 12px/1.4 var(--sans); border: 1px solid var(--border-default); color: var(--text-secondary); white-space: nowrap; }
+.mtag.great { border-color: var(--status-success); color: var(--status-success); }
+.mtag.partial { border-color: var(--status-warning); color: var(--status-warning); }
+.mtag.miss { border-color: var(--status-danger); color: var(--status-danger); }
+.mtag.todo { color: var(--text-muted); }
+h2 .mtag { font: 600 20px/1.3 var(--sans); padding: 4px 14px; border-width: 1.5px; }
+/* Blink's own three-step tour stays available; during a mission the mission panel guides instead. */
+body.mission-on #tour { display: none !important; }
+
+/* ---------- dialogs ---------- */
+.modal.mwide { width: 640px; }
+.mchips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mchip { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px; border-radius: 12px; border: 1px solid var(--border-default); text-align: left; transition: background-color .15s, border-color .15s; }
+.mchip:hover { background: var(--bg-glass); }
+.mchip[aria-checked="true"] { border-color: var(--accent-primary); background: var(--bg-glass); box-shadow: inset 0 0 0 1px var(--accent-primary); }
+.mfacts { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; margin: 0; padding: 12px; border-radius: 12px; background: var(--bg-elevated); }
+.mfacts dt { font: 400 12px/1.4 var(--sans); color: var(--text-muted); }
+.mfacts dd { margin: 0; text-align: right; font: 400 12px/1.4 var(--mono); color: var(--text-primary); }
+.modal .mf .mfbtn { padding: 8px 16px; border-radius: 8px; font: 500 13px/1.3 var(--sans); border: 1px solid var(--border-default); }
+.modal .mf .mfbtn.pri { background: var(--bg-inverse); color: var(--text-inverse); border-color: transparent; }
+.mchart { position: relative; height: 260px; border-radius: 12px; background: var(--bg-elevated); }
+.mchart canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* ---------- mission board (/missions) ---------- */
+.mboard { display: flex; flex-direction: column; gap: 40px; padding-block: 56px; }
+.mprogress { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.mbar { flex: 1; min-width: 200px; max-width: 420px; height: 6px; border-radius: 9999px; background: var(--bg-elevated); overflow: hidden; }
+.mbar i { display: block; height: 100%; background: var(--status-success); border-radius: inherit; transition: width .3s; }
+.mcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
+.mcard { display: flex; flex-direction: column; gap: 12px; padding: 24px; }
+.mcard .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mcard .grow { flex: 1; }
+.mcard .meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.mcard ol { margin: 0; padding-left: 18px; color: var(--text-secondary); font: 400 12px/1.5 var(--sans); }
+.mcard .acts { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.mnum { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: var(--bg-elevated); border: 1px solid var(--border-default); font: 600 14px/1 var(--sans); }
+.msection { display: flex; flex-direction: column; gap: 16px; }
+.mgloss { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.mgloss > div { display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: 12px; border: 1px solid var(--border-subtle); background: var(--bg-surface); }
+.mreport { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.mreport > div { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 12px; border: 1px solid var(--border-subtle); background: var(--bg-surface); }
+.mflow { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; counter-reset: f; }
+.mflow > div { display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: 12px; background: var(--bg-surface); border: 1px solid var(--border-subtle); }
+.mflow > div::before { counter-increment: f; content: counter(f); display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--bg-elevated); font: 600 11px/1 var(--sans); color: var(--accent-primary); }
+@media (max-width: 820px) {
+  .mchips { grid-template-columns: 1fr; }
+  .mboard { padding-block: 32px; }
+}
