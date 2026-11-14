@@ -93,7 +93,39 @@ pixel map (`nasa-irsa-spherex/dr1/solid_angle_pixel_map/`) would make the fluxes
 Aperture losses are not corrected, so fluxes of point sources are underestimated by a constant
 factor per detector; spectra shapes and light curves are unaffected.
 
+## Data and acknowledgements
+
+- **SPHEREx** spectral images from the NASA/IPAC Infrared Science Archive (IRSA):
+  SPHEREx Data Release 1 (DR1) Spectral Images, [doi:10.26131/IRSA678](https://doi.org/10.26131/IRSA678),
+  and SPHEREx Quick Release 3 (QR3) Spectral Images, [doi:10.26131/IRSA662](https://doi.org/10.26131/IRSA662).
+- **Gaia DR3** sources from the ESA Gaia archive (`/api/gaia`).
+- **SIMBAD** for name resolving (`/api/resolve`), via the Harvard mirror and CDS.
+
+"This publication makes use of data products from the Spectro-Photometer for the History of the
+Universe, Epoch of Reionization and Ices Explorer (SPHEREx), which is a joint project of the Jet
+Propulsion Laboratory and the California Institute of Technology, and is funded by the National
+Aeronautics and Space Administration."
+
+"This research has made use of the NASA/IPAC Infrared Science Archive, which is funded by the
+National Aeronautics and Space Administration and operated by the California Institute of
+Technology."
+
+"This work has made use of data from the European Space Agency (ESA) mission Gaia
+(https://www.cosmos.esa.int/gaia), processed by the Gaia Data Processing and Analysis Consortium
+(DPAC, https://www.cosmos.esa.int/web/gaia/dpac/consortium). Funding for the DPAC has been
+provided by national institutions, in particular the institutions participating in the Gaia
+Multilateral Agreement."
+
+"This research has made use of the SIMBAD database, operated at CDS, Strasbourg, France"
+(Wenger et al. 2000, A&AS 143, 9).
+
+Libraries: FastAPI, Pydantic, Uvicorn, Astropy, Astroquery, NumPy, Pillow, Requests.
+
 ## AI assistance
 
-Parts of this backend were written with the help of an AI coding assistant (Claude Code)
-and reviewed by the team.
+Space Apps asks teams to state where AI ("Super Intelligence") tools were used. Most of the
+backend code in this folder (API models, name resolving, job model, fallback frame maker,
+photometry, Gaia endpoint, tests and deploy files) was written with an AI coding assistant
+(Claude Code, Anthropic) under the direction of the backend owner, who reviewed it and checked it
+against real SPHEREx data (tests in `tests/`). The approach and design decisions are the team's
+(`docs/design-v2.md`).

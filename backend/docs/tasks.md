@@ -31,7 +31,7 @@ Update this file as work progresses (`[x]` when done).
 
 ## Sunday morning
 
-- [ ] `shift_add` mode and `GET /api/diff` (implemented in fallback frame maker; verify on WISE 0855 / Barnard)
+- [x] `shift_add` mode and `GET /api/diff`. Verified on WISE 0855 D6 (45 cutouts): moving stack 17 sigma exactly at centre, fixed stack 11 sigma (offset, smeared), reversed-motion control 6.7 sigma (offset). Barnard diff: white above black (moves north)
 - [ ] Error cases with clear messages (`bad_input`, `not_found`, `no_coverage`, `archive_unavailable`)
 - [ ] Pre-generate and store frames for all 5 targets
 
@@ -44,7 +44,7 @@ Update this file as work progresses (`[x]` when done).
 
 ## Sunday 18:00 code freeze
 
-- [ ] README (EN), AI-usage note, IRSA acknowledgement + DOIs, pixel-area approximation note
+- [x] README (EN), AI-usage note, IRSA acknowledgement + DOIs, pixel-area approximation note (backend/README.md; SPHEREx/IRSA/SIMBAD texts from their sites, DOIs resolved 14 Nov)
 - [ ] Open public URL in a private window, confirm no password
 - [ ] Give URL + repo link + 5–6 sentence English description to the submission owner
 
