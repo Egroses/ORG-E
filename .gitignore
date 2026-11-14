@@ -1,0 +1,9 @@
+# Downloaded data and rehearsal caches stay on the local disk (pipeline/SPEC.md section 4)
+cache/
+rehearsal/cache_*/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.part
