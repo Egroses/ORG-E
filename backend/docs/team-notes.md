@@ -7,6 +7,9 @@ Ekibe gönderilecek özet doküman: https://claude.ai/artifact/Kisqc232fpfzyH9zk
 
 ## Arayüz (frontend)
 
+- [ ] **`feature/imaging-quest` uçtan uca denendi (15 Kasım, `68c47f7`):** backend 69 test, frontend 72 test geçti; derlenen frontend backend'den sunulunca beş vaka gerçek SPHEREx verisiyle açıldı ("Gerçek SPHEREx (IRSA)"), hata yok. **Dal henüz `main`'e birleşmedi**; birleşince `main` üzerinde kısa bir kontrol yapılacak.
+  - **Frontend Node 22 ister:** Vite 8, Node 21.4'te açılmıyor (`util.styleText` yok). Node 22 LTS (ya da 20.19+) gerekli; frontend README'sine yazılmalı.
+  - imaging işlem havuzu: sunucu zorla kapatılırsa (Ctrl+C değil, süreç öldürme) 8 yardımcı işlem arkada kalabiliyor; normal kapatmada sorun beklenmez.
 - [ ] **`GET /api/patch` hazır (Plan A, 15 Kasım).** `docs/patch-api.md` sözleşmesiyle: 202 → 200, hata 200 + `status: "failed"`, geçersiz parametre 400 + `status: "failed"`, hedefe 10″ içinde yakalama, gzip'li disk önbelleği, canlı sorguda tek dedektör, açılışta beş hedef için `dets=2,4,6` ve `1..6` (arayüzün dönem ayarlarıyla: R Dra 60/150, diğerleri 30/60). **`imaging/` `main`'e birleşince kendiliğinden çalışır**; o zamana kadar `internal_error` ("imaging yüklü değil") döner. imaging dalıyla denendi: beş hedef × iki dedektör seti 200, dönem sayıları sözleşme tablosuyla aynı, Barnard yönelim testi geçti, önbellekten yanıt ~10 ms, ağda 0,5–1,2 MB.
   - Başarısız bir yama 60 sn boyunca aynı hatayı döner, sonra yeniden denenir (GET hem başlatıp hem yokladığı için; yoksa istemci hep 202 görürdü).
   - `/api/jobs` kareleri de imaging varsa `imaging.make_frames` ile üretilir, yoksa ya da hata verirse `app/frames.py`. `/api/health`: `frame_engine`, `patch`, `cached_units` (30 olmalı).
