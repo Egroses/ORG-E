@@ -17,8 +17,8 @@ Update this file as work progresses (`[x]` when done).
 
 ## Saturday evening
 
-- [ ] Coordinate parsing + `GET /api/resolve` (SkyCoord first, then SIMBAD main → Harvard mirror TAP)
-- [ ] Hard-coded table of the 5 test targets with 2026.0 positions + proper motions
+- [x] Coordinate parsing + `GET /api/resolve` (coordinates → 5-target table → SIMBAD Harvard → CDS). CDS main server still 404 on 14 Nov
+- [x] Hard-coded table of the 5 test targets with 2026.0 positions + proper motions (SIMBAD values, propagation checked against `pipeline/targets.json`)
 - [ ] Job model: `POST /api/jobs`, `GET /api/jobs/{id}`, frame serving; job id = hash(rounded ra/dec, fov, detector, mode, pm, data_release)
 - [ ] Wire `pipeline.get_cutouts` and `imaging.make_frames` behind the job
 

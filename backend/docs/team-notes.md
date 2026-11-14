@@ -14,7 +14,9 @@ Son güncelleme: 14 Kasım 2026.
   - Her karede `mjd_mean`: dönem şeridini zamana orantılı çizmek için.
   - İş yanıtında `error`: yalnızca `status` `failed` olduğunda dolu, diğer durumlarda `null`.
 - [ ] **Kare adresleri göreli** (`/api/frames/mock/0.png`). Başlarına `VITE_API_BASE` eklenmeli.
-- [ ] **RW Aurigae ve R Draconis'te `pmra`/`pmdec` değerleri `null`.** Bu alanlar yalnızca `shift_add` modunda kullanılıyor.
+- [ ] **`/api/resolve` ve `/api/targets` artık gerçek.** Koordinat (derece ya da saat-derece) ve isim kabul ediyor. Beş hedef sabit tablodan anında dönüyor, diğer isimler SIMBAD'a gidiyor (yaklaşık 0,5–1 sn). Öz hareket değerleri SIMBAD'dan alındı; beş hedefin hepsinde `pmra`/`pmdec` dolu, artık `null` yok.
+- [ ] **Bilinmeyen isim** `not_found` (404), **SIMBAD'a ulaşılamazsa** `archive_unavailable` (503) döner. Çıplak koordinat girilince `source: "coordinates"` gelir ve `pmra`/`pmdec` `null` olur.
+- [ ] **"WISE 0855"** gibi kısa adlar yalnızca beş hedef için çalışıyor (takma ad tablosu). SIMBAD bu cismi `WISEA J085510.74-071442.5` olarak tanıyor.
 - [ ] **Fark modu iş başlatmaz.** URL'deki `mode=diff` için yeni iş açılmamalı; mevcut işin kareleriyle `GET /api/diff?job=&a=&b=` çağrılmalı. Backend'de iş modları yalnızca `epoch` ve `shift_add`.
 - [ ] **Hata durum kodları:** `bad_input` 400, `not_found` 404, `no_coverage` 404, `archive_unavailable` 503. Geçersiz istek parametreleri de `bad_input` biçiminde döner.
 - [ ] **`resolve` ve `targets` yanıtları** senin önerdiğin biçimde. `resolve` yanıtına `query`, `parallax` alanları eklendi; `source` alanı `coordinates`, `targets` ya da `simbad` değerini alır.
@@ -36,6 +38,8 @@ Son güncelleme: 14 Kasım 2026.
 
 - [ ] **Barnard's Star için iki farklı 2026 konumu var.** `pipeline/targets.json`: `269.446271, 4.768197`. Tasarım ve arayüz dokümanları: `269.44638, 4.76677`. Önbellek anahtarları eşleşsin diye `targets.json`'daki değerler kullanılmalı.
 - [ ] **Kök dosyalar (`README.md`, `.gitignore`, `LICENSE`):** kimin sorumluluğunda olduğu netleşmeli. Backend yalnızca `backend/` klasörüne yazıyor.
+
+- [ ] **Ana SIMBAD sunucusu** (`simbad.cds.unistra.fr`) 14 Kasım'da hâlâ 404 veriyor; Harvard yansısı çalışıyor. İsim çözme gerekiyorsa backend'in `/api/resolve` uç noktasını kullanın.
 
 ## Açık kararlar
 

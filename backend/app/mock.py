@@ -1,4 +1,5 @@
-"""Mock API: fixed responses in the real format, returned regardless of parameters.
+"""Mock API for jobs, frames and analysis: fixed responses in the real format,
+returned regardless of parameters (targets and resolve are real, see api.py).
 
 Lets the frontend work before the pipeline and imaging code are wired in.
 The PNGs in mock_data/ are synthetic (see scripts/make_mock_pngs.py).
@@ -7,12 +8,12 @@ The PNGs in mock_data/ are synthetic (see scripts/make_mock_pngs.py).
 from datetime import date
 from pathlib import Path
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
 from .errors import ApiError
-from .models import (DisplayRange, EpochPosition, Frame, GaiaSource, Grid, Job, JobRequest,
-                     Progress, ResolveResponse, SkyPosition, SpectrumPoint, Target)
+from .models import (DisplayRange, Frame, GaiaSource, Grid, Job, JobRequest, Progress,
+                     SkyPosition, SpectrumPoint)
 from .targets import TARGETS
 
 MOCK_DATA = Path(__file__).resolve().parents[1] / "mock_data"
@@ -76,25 +77,6 @@ def mock_running_job() -> Job:
 
 
 router = APIRouter(prefix="/api")
-
-
-@router.get("/targets", response_model=list[Target])
-def get_targets():
-    return TARGETS
-
-
-@router.get("/resolve", response_model=ResolveResponse)
-def resolve(q: str = Query(..., min_length=1)):
-    return ResolveResponse(
-        query=q,
-        name=BARNARD.name,
-        catalog=EpochPosition(ra=269.452075, dec=4.693391, epoch=2000.0),
-        current=EpochPosition(ra=BARNARD.ra, dec=BARNARD.dec, epoch=2026.0),
-        pmra=BARNARD.pmra,
-        pmdec=BARNARD.pmdec,
-        parallax=546.976,
-        source="targets",
-    )
 
 
 @router.post("/jobs", response_model=Job)
