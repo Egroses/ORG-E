@@ -299,6 +299,10 @@ hr.div { height: 1px; margin: 0; border: 0; background: var(--border); align-sel
 .sky-labels { position: absolute; inset: 0; pointer-events: none; }
 .sky-label { position: absolute; padding: 0 4px; border-radius: 4px; background: rgba(0, 0, 0, 0.68); font: 500 11px/16px var(--mono); white-space: nowrap; }
 .sky-tap { position: absolute; inset: 0; width: 100%; cursor: crosshair; opacity: 0; touch-action: manipulation; }
+.sky-zoombar { position: absolute; right: 8px; top: 46px; display: flex; flex-direction: column; gap: 2px; z-index: 3; }
+.sky-zoombar button { width: 30px; height: 30px; border: 1px solid rgba(255,255,255,.35); border-radius: 4px; background: rgba(0,0,0,.6); color: #fff; font: 600 15px/1 var(--sans); cursor: pointer; }
+.sky-zoombar button:hover:not(:disabled) { background: rgba(0,0,0,.82); }
+.sky-zoombar button:disabled { opacity: .4; cursor: default; }
 .sky-tap:focus-visible { opacity: 1; background: transparent; outline: 2px solid var(--accent); outline-offset: -2px; }
 .sky-lab { position: absolute; left: 0; right: 0; top: 0; padding: 12px 40px 28px 14px; display: flex; flex-direction: column; gap: 2px; pointer-events: none; background: linear-gradient(rgba(0,0,0,.72), transparent); font: 400 11px/1.35 var(--mono); color: #e5e5e5; }
 .sky-lab b { font: 600 22px/1.15 var(--sans); letter-spacing: -0.02em; color: #fff; }

@@ -59,6 +59,14 @@ interface Props {
 export const HEAVY_FLAG_SHARE = 128;
 
 const ZOOM = 2.5;
+const MAX_ZOOM = 10;
+
+interface View { k: number; cx: number; cy: number }
+/** Keeps the zoomed picture inside the frame: the view centre stays within [0.5/k, 1 - 0.5/k]. */
+function clampView(v: View): View {
+  const lo = 0.5 / v.k, hi = 1 - 0.5 / v.k;
+  return { k: v.k, cx: Math.min(hi, Math.max(lo, v.cx)), cy: Math.min(hi, Math.max(lo, v.cy)) };
+}
 const NICE_ARCSEC = [5, 10, 20, 30, 60, 120, 300, 600];
 
 function arcLabel(a: number) {
@@ -181,22 +189,80 @@ export function SkyCanvas({
   }, [bandFrames, bandMasks, epoch, band, mode, stretch, stack, stackStretch, invert, patch, size, showFlags, quality, refEpoch]);
 
   const pct = (v: number) => ((v + 0.5) / size) * 100;
-  const scale = magnify ? ZOOM : 1;
+  // View model: screen fraction f = 0.5 + (imageFraction - c) * k. The magnifier button gives a preset view (k = ZOOM,
+  // the mark stays where it is); the wheel, the +/- buttons and dragging replace it with the reader's own view.
   const anchor = focus ?? mark;
-  const origin = anchor ? { x: pct(anchor.x), y: pct(anchor.y) } : { x: 50, y: 50 };
-  const ox = origin.x / 100, oy = origin.y / 100;
-  // screen fraction <-> image pixel
+  const presetK = magnify ? ZOOM : 1;
+  const ax = anchor ? pct(anchor.x) / 100 : 0.5;
+  const ay = anchor ? pct(anchor.y) / 100 : 0.5;
+  const preset: View = { k: presetK, cx: (0.5 - ax * (1 - presetK)) / presetK, cy: (0.5 - ay * (1 - presetK)) / presetK };
+  const [user, setUser] = useState<View | null>(null);
+  const userRef = useRef<View | null>(null);
+  userRef.current = user;
+  const presetRef = useRef(preset);
+  presetRef.current = preset;
+  useEffect(() => setUser(null), [magnify, patch]);
+  const v = user ?? preset;
+  const scale = v.k;
   const fracToPix = (fx: number, fy: number): Pt => ({
-    x: (ox + (fx - ox) / scale) * size - 0.5,
-    y: (oy + (fy - oy) / scale) * size - 0.5,
+    x: (v.cx + (fx - 0.5) / v.k) * size - 0.5,
+    y: (v.cy + (fy - 0.5) / v.k) * size - 0.5,
   });
   const pixToFrac = (x: number, y: number) => ({
-    fx: ox + (((x + 0.5) / size) - ox) * scale,
-    fy: oy + (((y + 0.5) / size) - oy) * scale,
+    fx: 0.5 + (((x + 0.5) / size) - v.cx) * v.k,
+    fy: 0.5 + (((y + 0.5) / size) - v.cy) * v.k,
   });
 
+  const zoomAt = (fx: number, fy: number, factor: number) => {
+    const cur = userRef.current ?? presetRef.current;
+    const k = Math.min(MAX_ZOOM, Math.max(1, cur.k * factor));
+    // keep the image point under (fx, fy) fixed
+    const px = cur.cx + (fx - 0.5) / cur.k, py = cur.cy + (fy - 0.5) / cur.k;
+    setUser(clampView({ k, cx: px - (fx - 0.5) / k, cy: py - (fy - 0.5) / k }));
+  };
+  const zoomAtRef = useRef(zoomAt);
+  zoomAtRef.current = zoomAt;
+
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      zoomAtRef.current((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height, Math.exp(-delta * (e.ctrlKey ? 0.01 : 0.0018)));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  const dragged = useRef(false);
+  function startDrag(e: React.PointerEvent<HTMLElement>) {
+    if (e.button !== 0) return;
+    dragged.current = false;
+    const r = e.currentTarget.getBoundingClientRect();
+    const start = { x: e.clientX, y: e.clientY, v: userRef.current ?? presetRef.current };
+    if (start.v.k <= 1) return;
+    const move = (m: PointerEvent) => {
+      const dx = m.clientX - start.x, dy = m.clientY - start.y;
+      if (!dragged.current && Math.hypot(dx, dy) < 5) return;
+      dragged.current = true;
+      setUser(clampView({ k: start.v.k, cx: start.v.cx - dx / r.width / start.v.k, cy: start.v.cy - dy / r.height / start.v.k }));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      // the click that follows a drag must not place a mark
+      setTimeout(() => { dragged.current = false; }, 0);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }
+
   function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
-    if (!onTap) return;
+    if (!onTap || dragged.current) return;
     const r = e.currentTarget.getBoundingClientRect();
     if (e.detail === 0) {
       onTap({ x: (size - 1) / 2, y: (size - 1) / 2 });
@@ -244,16 +310,17 @@ export function SkyCanvas({
     const placed = placeLabels(items, box.w, box.h);
     return placed.map((p) => ({ ...p, color: items.find((i) => i.text === p.text)?.color ?? '#fff' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rings, box.w, box.h, scale, ox, oy, size]);
+  }, [rings, box.w, box.h, scale, v.cx, v.cy, size]);
 
   const view = (
     <div
       ref={boxRef}
       className={`sky ${chrome ? 'sky-chrome' : ''} ${className}`}
       onPointerMove={handleMove}
+      onPointerDown={startDrag}
       onPointerLeave={() => setCursor(null)}
     >
-      <div className="sky-zoom" style={{ transform: `scale(${scale})`, transformOrigin: `${origin.x}% ${origin.y}%` }}>
+      <div className="sky-zoom" style={{ transform: `translate(${(0.5 - v.cx * v.k) * 100}%, ${(0.5 - v.cy * v.k) * 100}%) scale(${v.k})`, transformOrigin: '0 0' }}>
         <canvas
           ref={ref}
           width={size}
@@ -322,6 +389,11 @@ export function SkyCanvas({
           </div>
         </>
       )}
+      {(chrome || onTap) && <div className="sky-zoombar" role="group" aria-label={t('canvas.zoom')} onPointerDown={(e) => e.stopPropagation()}>
+        <button type="button" onClick={(e) => { e.stopPropagation(); zoomAt(0.5, 0.5, 1.5); }} aria-label={t('canvas.zoomIn')} disabled={scale >= MAX_ZOOM}>+</button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); zoomAt(0.5, 0.5, 1 / 1.5); }} aria-label={t('canvas.zoomOut')} disabled={scale <= 1}>−</button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); setUser({ k: 1, cx: 0.5, cy: 0.5 }); }} aria-label={t('canvas.zoomReset')} disabled={scale === 1 && !user}>1×</button>
+      </div>}
       {children}
     </div>
   );

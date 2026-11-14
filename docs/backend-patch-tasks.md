@@ -66,10 +66,11 @@ ayrı bir uçtan sunulacak. Mevcut uçlar (`/api/jobs`, `/api/frames`, `/api/dif
 - [ ] `/api/health`: önbellekte kaç birim olduğunu da döndür (30 olmalı). Sunucuda önbellek eksikse hemen anlaşılır.
 - [ ] Açtıktan sonra duman testi: Barnard's Star için `GET /api/patch?ra=269.446271&dec=4.768197&dets=2,4,6` 200 dönmeli.
 
-- [ ] **Zip'in adresi.** `cache_all.zip` sunucuda açılmalı ama dosyanın nerede durduğu henüz belli değil (karar proje sahibinde):
-      GitHub Release (depo herkese açılınca), Google Drive bağlantısı ya da başka bir yer. Adres gelmeden bu madde yapılamaz.
-      Drive kullanılırsa indirme: `curl -L "https://drive.usercontent.google.com/download?id=<ID>&export=download&confirm=t" -o cache_all.zip`,
-      ardından SHA-256 kontrolü. Aynı yöntem B'nin 78 MB'lık zip'iyle çalıştı; 180 MB için ayrıca denenecek.
+- [x] **Zip'in adresi (Google Drive).** Dosya: https://drive.google.com/file/d/1RvhWuJ-oytig0Gnu6GaJfnGroLP0Fmb_/view?usp=sharing
+      İndirme (180 MB, onay sayfası olmadan, ~4 sn denendi, SHA-256 eşleşti):
+      `curl -L "https://drive.usercontent.google.com/download?id=1RvhWuJ-oytig0Gnu6GaJfnGroLP0Fmb_&export=download&confirm=t" -o cache_all.zip`,
+      ardından `sha256sum cache_all.zip` çıktısı yukarıdaki SHA-256 ile **aynı olmalı**; değilse açma. İçeriği güvenilmez veri say:
+      boş bir dizine aç, yolları kontrol et (`cache/<hedef>/D<n>/...`).
 
 ### 5. Testler
 - [ ] Sözleşme testi: base64 çöz, boyutlar `size*size`, `noise > 0`, bayrak haritası uint8; **yönelim**: Barnard D6'da
