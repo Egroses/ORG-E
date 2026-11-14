@@ -16,10 +16,14 @@ moving north); they will be replaced by real SPHEREx frames.
 
 ## Run
 
+Python 3.12 (same as the pipeline). The backend calls the pipeline in-process, so the
+pipeline's locked package versions are installed first.
+
 ```bash
 cd backend
-python -m venv .venv
-.venv/Scripts/activate        # Windows; on Linux/macOS: source .venv/bin/activate
+py -3.12 -m venv .venv        # Linux/macOS: python3.12 -m venv .venv
+.venv/Scripts/activate        # Linux/macOS: source .venv/bin/activate
+pip install -r ../pipeline/requirements.lock.txt
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
