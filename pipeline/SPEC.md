@@ -8,8 +8,9 @@ NASA SPHEREx arşivinden (IRSA) beş test hedefinin kesitlerini indirip yerel bi
 
 ## 2. Veri kaynağı
 
-- Veri setleri: yalnızca `spherex_dr1` ve `spherex_qr3`. QR2 kullanılmaz.
-- Görüntü listesi: `astroquery.ipac.irsa.Irsa.query_sia(pos=(coord, 1 arcsec), collection=['spherex_dr1', 'spherex_qr3'])`. Her satır tek poz ve tek dedektördür.
+- Veri setleri: `spherex_dr1`, `spherex_qr3` ve bunların deep (derin alan) koleksiyonları `spherex_dr1_deep`, `spherex_qr3_deep`. QR2 kullanılmaz. Deep görüntüler yalnızca `rdra` için vardır (kuzey ekliptik kutbuna yakın): 14 Kasım 2026'da `rdra` için 2493 görüntünün 1954'ü deep koleksiyonlardadır; diğer dört hedefte deep görüntü yoktur.
+- Değişiklik notu (14 Kasım 2026): ilk sürümde yalnızca `spherex_dr1` ve `spherex_qr3` sorgulanıyordu ve `rdra` için 539 görüntü dönüyordu. Deep koleksiyonlar A ve B'nin onayıyla eklendi; daha önce inen dosyalar geçerlidir, eksikler `download` ile tamamlanır.
+- Görüntü listesi: `astroquery.ipac.irsa.Irsa.query_sia(pos=(coord, 1 arcsec), collection=['spherex_dr1', 'spherex_qr3', 'spherex_dr1_deep', 'spherex_qr3_deep'])`. Her satır tek poz ve tek dedektördür.
 - Kesit: görüntünün IRSA adresine `?center=<ra>,<dec>&size=<size>` eklenir. `ra` ve `dec` derece, noktadan sonra tam 6 basamak (`f"{ra:.6f},{dec:.6f}"`); `size` derece, `0.1` olarak yazılır.
 - Başvuru: https://caltech-ipac.github.io/irsa-tutorials/spherex-intro/ ve https://caltech-ipac.github.io/irsa-tutorials/spherex-cutouts/
 
@@ -60,7 +61,7 @@ UTF-8, satır sonu `\n`, başlık satırı var, satırlar `(mjd, file)` sırası
 | `date_avg` | `IMAGE` başlığı `DATE-AVG` | metin |
 | `detector` | 1–6 | tam sayı |
 | `wavelength_um` | kesit merkezindeki dalga boyu (`WCS-WAVE`) | `.4f` |
-| `collection` | `dr1` ya da `qr3` | metin |
+| `collection` | `dr1`, `qr3`, `dr1_deep` ya da `qr3_deep` | metin |
 | `version` | `PRIMARY` başlığı `VERSION` | metin |
 | `ra_center`, `dec_center` | `targets.json` | `.6f` |
 | `size_deg` | 0.1 | `.3f` |
@@ -88,7 +89,7 @@ Kimse diğerinin payını indirmez. Paylar ayrık olduğu için iki önbellek so
 
 İndirme sırası: A önce `barnard` D6 ve `wise0855` D6, sonra kalanlar, en son `rdra`. B önce `epsindb`, sonra `rdra`.
 
-14 Kasım 2026'da ölçülen görüntü sayıları (yalnızca kabaca karşılaştırma için; arşive haftalık veri eklenir): `barnard` 358, `epsindb` 458, `wise0855` 258, `rwaur` 335, `rdra` 2493.
+14 Kasım 2026'da ölçülen görüntü sayıları (yalnızca kabaca karşılaştırma için; arşive haftalık veri eklenir): `barnard` 358, `epsindb` 458, `wise0855` 258, `rwaur` 335, `rdra` 2493 (539 ana tarama + 1954 deep).
 
 ## 9. Komutlar
 

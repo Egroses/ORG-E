@@ -6,7 +6,8 @@ ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "cache"
 REHEARSAL = ROOT / "rehearsal"
 
-COLLECTIONS = ["spherex_dr1", "spherex_qr3"]
+# The deep-field collections matter for rdra (near the north ecliptic pole): 1954 of its 2493 images.
+COLLECTIONS = ["spherex_dr1", "spherex_qr3", "spherex_dr1_deep", "spherex_qr3_deep"]
 DETECTORS = (1, 2, 3, 4, 5, 6)
 
 # HDUs kept in every stored cutout, in this order (EPSF is dropped).

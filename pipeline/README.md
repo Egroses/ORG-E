@@ -53,6 +53,12 @@ records = get_cutouts(269.446271, 4.768197, 0.1, 6)
 Cutouts that are not cached yet are downloaded first (3 connections, retries on HTTP
 503/429). Positions other than the five targets are stored under `cache/custom/`.
 
+## Archive collections
+
+Images come from `spherex_dr1`, `spherex_qr3` and their deep-field versions
+(`spherex_dr1_deep`, `spherex_qr3_deep`). Only R Draconis has deep-field images.
+The `collection` column of `manifest.csv` is `dr1`, `qr3`, `dr1_deep` or `qr3_deep`.
+
 ## What is stored
 
 For every cutout, the FITS layers `PRIMARY`, `IMAGE`, `FLAGS`, `VARIANCE`, `ZODI` and
