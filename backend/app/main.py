@@ -48,8 +48,8 @@ app.include_router(mock.router)
 @app.get("/api/health")
 def health():
     return {"status": "ok", "frontend": config.FRONTEND_DIST.is_dir(),
-            "real": ["targets", "resolve", "jobs", "frames", "diff"],
-            "mock": ["spectrum", "lightcurve", "gaia"]}
+            "real": ["targets", "resolve", "jobs", "frames", "diff", "gaia"],
+            "mock": ["spectrum", "lightcurve"]}
 
 
 def mount_frontend(application: FastAPI, dist: Path) -> bool:

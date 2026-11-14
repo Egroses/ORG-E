@@ -1,9 +1,10 @@
 """Mock data: the mock / mock-running / mock-error jobs (served through jobs.py) and the
-analysis endpoints (spectrum, lightcurve, gaia), which return fixed responses in the real
+analysis endpoints (spectrum, lightcurve), which return fixed responses in the real
 format regardless of parameters until the real code is written.
 
 Lets the frontend work before the pipeline and imaging code are wired in.
-The PNGs in mock_data/ are synthetic (see scripts/make_mock_pngs.py).
+The PNGs in mock_data/ are real Barnard's Star D6 frames (three full epochs of the real job,
+copied by scripts/make_mock_pngs.py); the metadata below matches them.
 """
 
 from datetime import date
@@ -13,7 +14,7 @@ from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
 from .errors import ApiError
-from .models import (DisplayRange, Frame, GaiaSource, Grid, Job, Progress, SkyPosition,
+from .models import (DisplayRange, Frame, Grid, Job, Progress, SkyPosition,
                      SpectrumPoint)
 from .targets import TARGETS
 
@@ -22,15 +23,19 @@ MOCK_DATA = Path(__file__).resolve().parents[1] / "mock_data"
 BARNARD = next(t for t in TARGETS if t.key == "barnard")
 
 MOCK_GRID = Grid(ra=BARNARD.ra, dec=BARNARD.dec, scale_arcsec=3.075, width=117, height=117)
-MOCK_DISPLAY_RANGE = DisplayRange(min=-0.1, max=48.0, stretch="asinh")
-MOCK_DATA_RELEASE = "dr1+qr3@2026-11-10"
+MOCK_DISPLAY_RANGE = DisplayRange(min=-0.1215, max=371.3516, stretch="asinh")
+MOCK_DATA_RELEASE = "dr1+qr3@2026-08-20"
 
-# Barnard's Star D6 epochs measured on 14 Nov; n_images and flagged_fraction are made up.
+# Frames 0, 1 and 4 of the real Barnard's Star D6 job (14 Nov 2026), renumbered 0-2.
 MOCK_EPOCHS = [
-    ("2025-08-15", "2025-10-01", 20, 0.03),
-    ("2026-03-11", "2026-05-05", 21, 0.02),
-    ("2026-08-16", "2026-09-22", 17, 0.04),
+    dict(t_start="2025-08-15", t_end="2025-08-27", mjd_mean=60908.1338,
+         wavelength_um=[4.419, 5.001], n_images=17, flagged_fraction=0.0086),
+    dict(t_start="2026-03-19", t_end="2026-03-25", mjd_mean=61120.4379,
+         wavelength_um=[4.412, 5.002], n_images=19, flagged_fraction=0.0047),
+    dict(t_start="2026-08-16", t_end="2026-08-20", mjd_mean=61270.2824,
+         wavelength_um=[4.434, 4.977], n_images=17, flagged_fraction=0.0042),
 ]
+MOCK_SOURCE_FRAMES = [0, 1, 4]  # frame numbers in the real job that the mock PNGs come from
 
 
 def _mjd(day: str) -> float:
@@ -38,20 +43,8 @@ def _mjd(day: str) -> float:
 
 
 def mock_frames(job_id: str) -> list:
-    return [
-        Frame(
-            n=n,
-            url=f"/api/frames/{job_id}/{n}.png",
-            t_start=t_start,
-            t_end=t_end,
-            mjd_mean=round((_mjd(t_start) + _mjd(t_end)) / 2, 1),
-            detector=6,
-            wavelength_um=[4.41, 5.00],
-            n_images=n_images,
-            flagged_fraction=flagged,
-        )
-        for n, (t_start, t_end, n_images, flagged) in enumerate(MOCK_EPOCHS)
-    ]
+    return [Frame(n=n, url=f"/api/frames/{job_id}/{n}.png", detector=6, **epoch)
+            for n, epoch in enumerate(MOCK_EPOCHS)]
 
 
 def mock_job(job_id: str = "mock") -> Job:
@@ -125,16 +118,4 @@ def lightcurve(ra: float, dec: float, detector: int = 6):
         SpectrumPoint(wavelength_um=4.7, flux_mjy=round(4000 + 2500 * math.sin(2 * math.pi * k * 45 / 245), 1),
                       err_mjy=40.0, mjd=start + k * 45, detector=detector, flagged=False)
         for k in range(12)
-    ]
-
-
-@router.get("/gaia", response_model=list[GaiaSource])
-def gaia(ra: float, dec: float, radius: float = 0.05):
-    return [
-        GaiaSource(source_id="4472832130942575872", ra=BARNARD.ra, dec=BARNARD.dec,
-                   gmag=8.19, pmra=BARNARD.pmra, pmdec=BARNARD.pmdec),
-        GaiaSource(source_id="mock-1", ra=BARNARD.ra + 0.012, dec=BARNARD.dec - 0.008,
-                   gmag=14.2, pmra=-2.1, pmdec=-4.0),
-        GaiaSource(source_id="mock-2", ra=BARNARD.ra - 0.020, dec=BARNARD.dec + 0.015,
-                   gmag=15.8, pmra=1.3, pmdec=0.6),
     ]

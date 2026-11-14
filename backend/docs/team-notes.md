@@ -7,8 +7,9 @@ Son güncelleme: 14 Kasım 2026.
 
 - [ ] **Mock sunucu hazır.** `backend/` içinde `uvicorn app.main:app --reload`, ardından http://localhost:8000/docs. Kurulum `backend/README.md`'de.
   - Hazır iş kimlikleri: `mock` (tamamlanmış, 3 kare), `mock-running` (1 kare), `mock-error` (`no_coverage`).
-  - `diff`, `spectrum`, `lightcurve` ve `gaia` da sahte veri döndürüyor; grafikler buna karşı yazılabilir.
-  - Mock PNG'ler **sentetik**: gerçek Barnard verisi değil, aynı boyut ve ölçekte simülasyon. Gerçek kareler gelince değişecek.
+  - `spectrum` ve `lightcurve` şimdilik sahte veri döndürüyor; grafikler buna karşı yazılabilir.
+  - Mock PNG'ler artık **gerçek SPHEREx kareleri**: Barnard's Star D6, üç dönem (Ağu 2025, Mar 2026, Ağu 2026), 117×117. Fark görüntüsünde (`/api/diff?job=mock&a=0&b=2`) yıldızın kuzeye kayması beyaz üstte, siyah altta görünüyor.
+- [ ] **`/api/gaia` gerçek.** Gaia DR3, konumlar 2026.0'a taşınmış. Parametreler: `ra`, `dec`, `radius` (derece, varsayılan 0.075: 0,1°'lik karenin köşelerini kapsar, en çok 0.5), `gmag_max` (varsayılan 19), `limit` (varsayılan 500, parlaktan sönüğe). Yanıt yaklaşık 3 sn; aynı istek ikinci kez anında döner. Barnard alanında ~480 kaynak var; işaretçiler kalabalık olursa `gmag_max` düşürülebilir.
 - [ ] **Sözleşmeye eklenen alanlar, onayın gerekiyor:**
   - `grid` (`ra`, `dec`, `scale_arcsec`, `width`, `height`): senin dokümanındaki öneriyle birebir aynı.
   - Her karede `mjd_mean`: dönem şeridini zamana orantılı çizmek için.

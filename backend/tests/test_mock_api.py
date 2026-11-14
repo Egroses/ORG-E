@@ -67,4 +67,3 @@ def test_diff_and_analysis():
     assert client.get("/api/diff", params={"job": "mock", "a": 0, "b": 2}).status_code == 200
     assert len(client.get("/api/spectrum", params={"ra": 1, "dec": 2}).json()) == 102
     assert client.get("/api/lightcurve", params={"ra": 1, "dec": 2}).status_code == 200
-    assert client.get("/api/gaia", params={"ra": 1, "dec": 2}).status_code == 200

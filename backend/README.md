@@ -3,8 +3,8 @@
 FastAPI service between the data pipeline / imaging modules and the React frontend.
 The API contract is in `app/models.py` (source: `docs/design-v2.md`).
 
-**Current state:** `targets`, `resolve`, jobs, frames and diff are real. Spectrum,
-lightcurve and gaia are still **mock**: they return fixed responses in the real format,
+**Current state:** `targets`, `resolve`, jobs, frames, diff and gaia are real. Spectrum and
+lightcurve are still **mock**: they return fixed responses in the real format,
 regardless of parameters, so the frontend can be built before the real code is wired in.
 
 Jobs get cutouts from the pipeline (`pipeline/`, cache in `cache/` at the repo root). A unit
@@ -20,8 +20,8 @@ Pre-generate frames for the test targets from the local cache:
 `17:57:48.5 +04:41:36`, `17 57 48.5 +04 41 36`) or a name. The five test targets are answered
 from a built-in table; other names go to SIMBAD (Harvard mirror, then CDS). Positions with a
 known proper motion are moved from J2000 to epoch 2026.0.
-The mock PNGs in `mock_data/` are **synthetic** (a simulated star field with Barnard's Star
-moving north); they will be replaced by real SPHEREx frames.
+The mock PNGs in `mock_data/` are real Barnard's Star D6 frames (three epochs, Aug 2025 -
+Aug 2026) copied from a real job by `scripts/make_mock_pngs.py`.
 
 ## Run
 
@@ -41,7 +41,7 @@ Interactive API docs: http://localhost:8000/docs
 
 Tests: `python -m pytest -q` (add `NETWORK_TESTS=1` to also query SIMBAD live)
 
-Regenerate mock PNGs: `python -m scripts.make_mock_pngs`
+Refresh mock PNGs from the real Barnard job: `python -m scripts.make_mock_pngs`
 
 ## Deploy (Render)
 
