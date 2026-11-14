@@ -18,7 +18,8 @@ from fastapi.responses import FileResponse
 
 from . import config, mock
 from .errors import ApiError
-from .frames import make_frames, mjd_to_date, write_diff_png
+from . import frames as fallback_frames
+from .frames import mjd_to_date, write_diff_png
 from .models import DisplayRange, ErrorDetail, Frame, Grid, Job, JobRequest, Progress, SkyPosition
 from .targets import TARGETS
 
@@ -106,6 +107,29 @@ def data_release(records) -> str:
     return f"{collections}@{mjd_to_date(max(r['mjd'] for r in records))}"
 
 
+# ---------- frame making ----------
+
+def frame_engine() -> str:
+    """'imaging' when the team's imaging package is installed, else the backend's own frames.py."""
+    try:
+        import imaging  # noqa: F401
+    except ImportError:
+        return "backend"
+    return "imaging"
+
+
+def build_frames(*args):
+    """imaging.make_frames (same signature and outputs as app/frames.py), falling back to
+    app/frames.py if imaging is missing or fails. Returns (result, engine used)."""
+    if frame_engine() == "imaging":
+        try:
+            from imaging import make_frames
+            return make_frames(*args), "imaging"
+        except Exception:
+            log.exception("imaging.make_frames failed; using the backend frame maker")
+    return fallback_frames.make_frames(*args), "backend"
+
+
 # ---------- job manager ----------
 
 class JobManager:
@@ -124,8 +148,10 @@ class JobManager:
                 job = Job.model_validate_json(path.read_text(encoding="utf-8"))
             except ValueError:
                 continue
-            if job.status == "done":
-                self.jobs[job.id] = job
+            engine_file = path.parent / "engine.txt"
+            engine = engine_file.read_text(encoding="utf-8").strip() if engine_file.exists() else "backend"
+            if job.status == "done" and engine == frame_engine():
+                self.jobs[job.id] = job  # built by another frame maker: rebuilt on the next request
 
     def submit(self, request: JobRequest) -> Job:
         req = normalize(request)
@@ -185,8 +211,8 @@ class JobManager:
                      data_release=data_release(records))
         out_dir = self.jobs_dir / job_id
         try:
-            result = make_frames(records, req.ra, req.dec, req.fov, req.mode, req.pmra, req.pmdec,
-                                 config.CENTER_EPOCH, out_dir)
+            result, engine = build_frames(records, req.ra, req.dec, req.fov, req.mode, req.pmra, req.pmdec,
+                                          config.CENTER_EPOCH, out_dir)
         except Exception as exc:
             log.exception("frame making failed for job %s", job_id)
             return self._fail(job_id, "internal_error", f"Could not build frames: {exc}")
@@ -201,6 +227,7 @@ class JobManager:
         )
         job = self.get(job_id)
         (out_dir / "job.json").write_text(job.model_dump_json(indent=1), encoding="utf-8")
+        (out_dir / "engine.txt").write_text(engine, encoding="utf-8")
         log.info("job %s done: %d frames", job_id, len(frames))
 
 

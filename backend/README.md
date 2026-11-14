@@ -88,6 +88,7 @@ The public demo runs with `LIVE_QUERIES=0` (`render.yaml`, team decision 14 Nov)
 | `GET /api/spectrum?ra=&dec=` | Spectrum points |
 | `GET /api/lightcurve?ra=&dec=&detector=` | Brightness over time |
 | `GET /api/gaia?ra=&dec=&radius=` | Gaia DR3 sources in the field |
+| `GET /api/patch?ra=&dec=&fov=&dets=&gap_days=&max_span_days=` | Float32 epoch stacks per detector for the game (contract: `../docs/patch-api.md`); 202 while building, 200 when done |
 
 Mock job ids for frontend states: `mock` (done, 3 frames), `mock-running` (1 frame),
 `mock-error` (`no_coverage` error).
@@ -95,6 +96,20 @@ Mock job ids for frontend states: `mock` (done, 3 frames), `mock-running` (1 fra
 Errors: HTTP status + `{"error": {"code": "...", "message": "..."}}` with codes
 `bad_input` (400), `not_found` (404), `no_coverage` (404), `archive_unavailable` (503),
 `internal_error` (500). A failed job is still returned with HTTP 200, its reason in `error`.
+
+### `/api/patch` and the imaging package
+
+The numbers come from the team's `imaging/` package (`make_patch`, `encode_patch`). The backend
+validates the request, snaps positions within 10 arcsec of a test target to its cache, builds the
+patch in the background and keeps it as gzipped JSON in `data/patch/` (sent as it is to clients
+that accept gzip). A failed patch is reported for 60 s before a new request tries again. Live
+queries take one detector only (`400 bad_input` otherwise). With `PREBUILD_ON_START=1` the patches
+the frontend asks for on the five targets (`dets=2,4,6` and `1..6`) are built at start.
+
+`/api/jobs` frames also come from `imaging.make_frames` when the package is installed; if it is
+missing or fails, `app/frames.py` is used. Each job records which one built it (`engine.txt`),
+so frames are rebuilt when the engine changes. `GET /api/health` reports `frame_engine`, `patch`
+(imaging installed) and `cached_units` (30 = all five targets, six detectors).
 
 ## Spectrum and light curve
 
@@ -143,7 +158,7 @@ Libraries: FastAPI, Pydantic, Uvicorn, Astropy, Astroquery, NumPy, Pillow, Reque
 
 Space Apps asks teams to state where AI ("Super Intelligence") tools were used. Most of the
 backend code in this folder (API models, name resolving, job model, fallback frame maker,
-photometry, Gaia endpoint, tests and deploy files) was written with an AI coding assistant
+photometry, Gaia endpoint, `/api/patch` service, tests and deploy files) was written with an AI coding assistant
 (Claude Code, Anthropic) under the direction of the backend owner, who reviewed it and checked it
 against real SPHEREx data (tests in `tests/`). The approach and design decisions are the team's
 (`docs/design-v2.md`).

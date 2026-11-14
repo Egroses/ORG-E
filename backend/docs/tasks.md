@@ -44,6 +44,15 @@ Update this file as work progresses (`[x]` when done).
 - [x] `GET /api/gaia` (Gaia DR3 ESA TAP, propagated to 2026.0)
 - [x] Mock job uses real Barnard D6 frames
 
+## Plan A: `/api/patch` (team decision 15 Nov; list in `../docs/backend-patch-tasks.md`)
+
+- [x] `GET /api/patch` per `docs/patch-api.md`: 202/200, errors with `status: "failed"`, 10 arcsec snap, gzipped disk cache, one detector for live queries, prebuild of the frontend's patches
+- [x] `/api/jobs` uses `imaging.make_frames` when installed, falls back to `app/frames.py`; `engine.txt` per job
+- [x] `/api/health`: `cached_units`, `frame_engine`, `patch`
+- [x] Tested with the `feature/imaging-quest` branch on the full cache (69 tests, 5 targets x 2 detector sets)
+- [ ] `imaging/` merged into `main` (imaging owner), then smoke test on `main`
+- [ ] Frontend `realProvider.ts` against `/api/patch` (frontend owner)
+
 ## Sunday 18:00 code freeze
 
 - [x] README (EN), AI-usage note, IRSA acknowledgement + DOIs, pixel-area approximation note (backend/README.md; SPHEREx/IRSA/SIMBAD texts from their sites, DOIs resolved 14 Nov)

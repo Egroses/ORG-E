@@ -7,6 +7,9 @@ Ekibe gönderilecek özet doküman: https://claude.ai/artifact/Kisqc232fpfzyH9zk
 
 ## Arayüz (frontend)
 
+- [ ] **`GET /api/patch` hazır (Plan A, 15 Kasım).** `docs/patch-api.md` sözleşmesiyle: 202 → 200, hata 200 + `status: "failed"`, geçersiz parametre 400 + `status: "failed"`, hedefe 10″ içinde yakalama, gzip'li disk önbelleği, canlı sorguda tek dedektör, açılışta beş hedef için `dets=2,4,6` ve `1..6` (arayüzün dönem ayarlarıyla: R Dra 60/150, diğerleri 30/60). **`imaging/` `main`'e birleşince kendiliğinden çalışır**; o zamana kadar `internal_error` ("imaging yüklü değil") döner. imaging dalıyla denendi: beş hedef × iki dedektör seti 200, dönem sayıları sözleşme tablosuyla aynı, Barnard yönelim testi geçti, önbellekten yanıt ~10 ms, ağda 0,5–1,2 MB.
+  - Başarısız bir yama 60 sn boyunca aynı hatayı döner, sonra yeniden denenir (GET hem başlatıp hem yokladığı için; yoksa istemci hep 202 görürdü).
+  - `/api/jobs` kareleri de imaging varsa `imaging.make_frames` ile üretilir, yoksa ya da hata verirse `app/frames.py`. `/api/health`: `frame_engine`, `patch`, `cached_units` (30 olmalı).
 - [x] **Sözleşme geri bildirimine yanıt geldi (14 Kasım), uygulandı:** demo `LIVE_QUERIES=0`; tüm JSON `allow_nan=False` (bir NaN kaçarsa 500 `internal_error` JSON döner, düz metin değil); 1000 bayttan büyük yanıtlar gzip'li (ölçülen ~2 kat). Canlı sorgu ileride açılırsa `/api/patch` tek dedektörle sınırlanacak, fazlası 400 `bad_input`.
 - [ ] **R Draconis artık 8 kare (önceden 5).** Sürekli gözlendiği için 10 günlük boşluk kuralı Şubat–Mayıs 2026'yı tek kareye (475 görüntü) topluyordu. `app/frames.py` artık bir dönemi en fazla 30 günde kesiyor (`docs/patch-api.md`'deki `max_span_days=30` ile aynı). Sözleşme değişmedi; diğer hedeflerin kareleri aynı.
 - [ ] **Entegrasyon rehberi hazır:** https://claude.ai/artifact/R5H7kYirH6xdJ4ADwdxpAA (her uç nokta, örnek yanıtlar, hata kodları, TypeScript istemcisi, statik dosyalar). Frontend sahibiyle paylaşılmalı; sonundaki onay listesi yanıt bekliyor.
@@ -58,7 +61,7 @@ Ekibe gönderilecek özet doküman: https://claude.ai/artifact/Kisqc232fpfzyH9zk
 
 ## Veri hattı (pipeline)
 
-- [ ] **`data_release` bilgisi:** `get_cutouts` kayıtlarında `collection` ve `version` var, ama v2 tasarımın istediği sürüm/tarih bilgisi yok. Pipeline kodu prova sonrası değişmeyeceği için backend bunu kayıtlardan kendisi türetecek (koleksiyonlar + en son `mjd`). Ek bir şey gerekmiyor, bilgi amaçlı.
+- [ ] **`data_release` bilgisi:** `get_cutouts` kayıtlarında `collection` ve `version` var, ama v2 tasarımın istediği sürüm/tarih bilgisi yok. Pipeline kodu 107875d'de değişti (deep koleksiyonlar `dr1_deep`, `qr3_deep`); backend bunu kayıtlardan kendisi türetiyor (koleksiyonlar + en son `mjd`); deep adlar da çalışıyor. Ek bir şey gerekmiyor, bilgi amaçlı.
 - [ ] **Hedef konumları:** backend 5 hedefin konumunu doğrudan `pipeline/targets.json`'dan okuyor. Dosya değişirse haber verin.
 - [ ] **Python sürümü:** backend pipeline'ı aynı süreçte çağıracağı için sunucuda Python 3.12 ve `pipeline/requirements.lock.txt` sürümleri kullanılacak.
 - [ ] **`get_cutouts` önbellekte olsa da her seferinde arşive SIA sorgusu atıyor** (yaklaşık 18 sn, arşiv kapalıysa hata). Backend bu yüzden `manifest.csv` varsa pipeline'ı çağırmadan doğrudan önbellekten okuyor; dizini bulmak için `pipeline.cutouts._directory` kullanılıyor. Bu fonksiyonun adı ya da önbellek düzeni değişirse haber verin. Kodu değiştirmenizi istemiyorum, bilgi amaçlı.

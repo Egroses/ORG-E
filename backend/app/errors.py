@@ -1,4 +1,7 @@
-"""Error format: {"error": {"code": ..., "message": ...}} with a matching HTTP status."""
+"""Error format: {"error": {"code": ..., "message": ...}} with a matching HTTP status.
+
+/api/patch answers also carry "status": "failed" (docs/patch-api.md).
+"""
 
 import logging
 
@@ -27,26 +30,32 @@ def error_body(code: str, message: str) -> dict:
     return {"error": {"code": code, "message": message}}
 
 
+def _respond(request: Request, code: str, message: str, status: int) -> JSONResponse:
+    body = error_body(code, message)
+    if request.url.path == "/api/patch":
+        body = {"status": "failed", **body}
+    return JSONResponse(body, status_code=status)
+
+
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
-    async def _api_error(_: Request, exc: ApiError):
-        return JSONResponse(error_body(exc.code, exc.message), status_code=HTTP_STATUS[exc.code])
+    async def _api_error(request: Request, exc: ApiError):
+        return _respond(request, exc.code, exc.message, HTTP_STATUS[exc.code])
 
     @app.exception_handler(RequestValidationError)
-    async def _validation_error(_: Request, exc: RequestValidationError):
+    async def _validation_error(request: Request, exc: RequestValidationError):
         first = exc.errors()[0] if exc.errors() else {}
         where = ".".join(str(part) for part in first.get("loc", []) if part != "body")
         message = f"{where}: {first.get('msg', 'invalid input')}" if where else first.get("msg", "invalid input")
-        return JSONResponse(error_body("bad_input", message), status_code=400)
+        return _respond(request, "bad_input", message, 400)
 
     @app.exception_handler(Exception)
-    async def _unexpected(_: Request, exc: Exception):
+    async def _unexpected(request: Request, exc: Exception):
         # e.g. a NaN reaching a JSON answer (Starlette writes JSON with allow_nan=False)
         logging.getLogger("backend").exception("unhandled error")
-        return JSONResponse(error_body("internal_error", f"Unexpected server error: {type(exc).__name__}"),
-                            status_code=500)
+        return _respond(request, "internal_error", f"Unexpected server error: {type(exc).__name__}", 500)
 
     @app.exception_handler(StarletteHTTPException)
-    async def _http_error(_: Request, exc: StarletteHTTPException):
+    async def _http_error(request: Request, exc: StarletteHTTPException):
         code = "not_found" if exc.status_code == 404 else "bad_input"
-        return JSONResponse(error_body(code, str(exc.detail)), status_code=exc.status_code)
+        return _respond(request, code, str(exc.detail), exc.status_code)
