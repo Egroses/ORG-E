@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { LoadStep } from '../data/types';
-import { FOV_OPTIONS } from '../data/catalog';
+import { FOV_OPTIONS, KNOWN } from '../data/catalog';
+import { R } from '../ui/realisticText';
+import { num } from '../i18n';
+import { useI18n } from '../i18n/react';
 
 interface Props {
   initialText?: string;
@@ -9,15 +12,14 @@ interface Props {
   error?: string | null;
   onSearch: (text: string, fov: number) => string | null;
   onTryCase: () => void;
+  /** Realistic mode: other wording, quick picks for the cached targets, no practice-case button. */
+  realistic?: boolean;
 }
 
-const STEPS: { id: LoadStep; name: string }[] = [
-  { id: 'finding', name: 'Finding SPHEREx photos of this spot' },
-  { id: 'downloading', name: 'Downloading three dates' },
-  { id: 'stacking', name: 'Stacking photos for each date' },
-];
+const STEPS: Exclude<LoadStep, 'done'>[] = ['finding', 'downloading', 'stacking'];
 
-export function ExploreGate({ initialText = '', initialFov = 0.1, loading, error, onSearch, onTryCase }: Props) {
+export function ExploreGate({ initialText = '', initialFov = 0.1, loading, error, onSearch, onTryCase, realistic = false }: Props) {
+  const { t } = useI18n();
   const [text, setText] = useState(initialText);
   const [fov, setFov] = useState(initialFov);
   const [formError, setFormError] = useState<string | null>(null);
@@ -28,23 +30,29 @@ export function ExploreGate({ initialText = '', initialFov = 0.1, loading, error
   }
 
   if (loading && loading !== 'done') {
-    const idx = STEPS.findIndex((s) => s.id === loading);
+    const idx = STEPS.findIndex((s) => s === loading);
     return (
       <main className="page page-narrow">
-        <section className="card paper gate">
-          <h1 className="gate-title">Preparing your sky patch</h1>
+        <section className="card gate">
+          <h1 className="t-heading">{realistic ? R.gateTitle : t('gate.preparing')}</h1>
           <ol className="load-steps">
             {STEPS.map((s, i) => (
-              <li key={s.id} className={i < idx ? 'done' : i === idx ? 'now' : ''}>
+              <li key={s} className={i < idx ? 'done' : i === idx ? 'now' : ''}>
                 <span className="load-dot" aria-hidden="true" />
-                {s.name}
-                {i < idx && <span className="sr-only"> (done)</span>}
-                {i === idx && <span className="sr-only"> (in progress)</span>}
+                {t(`gate.step.${s}`)}
+                {i < idx && <span className="sr-only"> ({t('gate.done')})</span>}
+                {i === idx && <span className="sr-only"> ({t('gate.inProgress')})</span>}
               </li>
             ))}
           </ol>
-          <p className="gate-note">With live SPHEREx data this can take about 90 seconds. The five practice cases are ready instantly.</p>
-          <button type="button" className="btn btn-paper" onClick={onTryCase}>Try a practice case while you wait</button>
+          {realistic ? (
+            <p className="t-caption c-3">{R.gateLoading}</p>
+          ) : (
+            <>
+              <p className="t-caption c-3">{t('gate.wait')}</p>
+              <button type="button" className="btn" onClick={onTryCase}>{t('gate.tryCase')}</button>
+            </>
+          )}
         </section>
       </main>
     );
@@ -52,29 +60,39 @@ export function ExploreGate({ initialText = '', initialFov = 0.1, loading, error
 
   return (
     <main className="page page-narrow">
-      <form className="card paper gate" onSubmit={submit}>
-        <h1 className="gate-title">Explore the sky</h1>
-        <p className="gate-lead">Type a star name or a position. We’ll fetch SPHEREx photos of that spot from three dates and flip them for you.</p>
-        <label htmlFor="where" className="gate-label">Where to look</label>
+      <form className="card gate" onSubmit={submit}>
+        <h1 className="t-heading">{realistic ? R.gateTitle : t('gate.title')}</h1>
+        <p className="t-lead c-2">{realistic ? R.gateLead : t('gate.lead')}</p>
+        <label htmlFor="where" className="t-label">{t('gate.where')}</label>
         <input
           id="where"
           type="text"
           value={text}
           onChange={(e) => { setText(e.target.value); setFormError(null); }}
-          placeholder="e.g. WISE 0855, or 08h55m10s −07°14′42″, or 133.79 -7.24"
+          placeholder={t('gate.placeholder')}
           aria-describedby={formError || error ? 'gate-error' : undefined}
         />
-        <span className="gate-label" id="fov-label">How much sky</span>
-        <div className="seg seg-paper" role="radiogroup" aria-labelledby="fov-label">
+        <span className="t-label" id="fov-label">{t('gate.howMuch')}</span>
+        <div className="seg seg-wrap" role="group" aria-labelledby="fov-label">
           {FOV_OPTIONS.map((o) => (
-            <button key={o.value} type="button" role="radio" aria-checked={fov === o.value} className={`seg-btn${fov === o.value ? ' on' : ''}`} onClick={() => setFov(o.value)}>
-              {o.name} <span className="seg-sub">{o.sub}</span>
+            <button key={o.value} type="button"  aria-pressed={fov === o.value} onClick={() => setFov(o.value)}>
+              {o.name} <span className="c-3">{o.sub} · {num(Math.round(o.value * 60), 0)}′</span>
             </button>
           ))}
         </div>
-        <p className="gate-note">Bigger areas catch faster movers but take longer to load.</p>
-        {(formError || error) && <p id="gate-error" className="form-error" role="alert">{formError || error}</p>}
-        <button type="submit" className="btn btn-primary btn-lg">Show this sky</button>
+        <p className="t-caption c-3">{t('gate.bigger')}</p>
+        {realistic && (
+          <>
+            <p className="t-caption c-3">{R.gateHelp}</p>
+            <div className="row wrap" role="group" aria-label={t('gate.cached')}>
+              {Object.values(KNOWN).map((k) => (
+                <button key={k.id} type="button" className="btn btn-sm" onClick={() => setFormError(onSearch(k.name, fov))}>{k.name}</button>
+              ))}
+            </div>
+          </>
+        )}
+        {(formError || error) && <p id="gate-error" className="form-error" role="alert">{formError ? t('search.error') : error}</p>}
+        <button type="submit" className="btn btn-primary btn-lg">{t('gate.show')}</button>
       </form>
     </main>
   );

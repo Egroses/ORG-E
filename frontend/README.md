@@ -53,7 +53,32 @@ Note: practice targets are centred where they are at the middle epoch. Barnard's
 WISE 0855 ~2′ since its 2010 catalogue position, so centring on the old coordinates would push them to the edge.
 Catalogue values in `src/data/catalog.ts` are approximate; verify against SIMBAD / Gaia DR3 before quoting them.
 
-## Layout
+## Design system and layout (white scientific redesign)
+
+The interface is a clean white scientific tool with the game on top. Tokens, type scale, hairline borders and panel
+proportions are adapted from YosefGul/spherex-blink (MIT); all of it lives in `src/index.css`.
+
+- **Themes.** Light is the default (white surfaces, grey page, one teal-blue accent, status colours for catalogue/measure/flags,
+  text contrast of at least 4.5:1). A dark theme exists behind the moon/sun button in the top bar; the choice is stored in
+  `localStorage` (`skyquest.theme.v1`, `src/state/theme.ts`) and only a stored `dark` ever overrides light. The sky pictures stay
+  dark in both themes. The five case colours appear only as small accents (case chips, difficulty dots, progress dots).
+- **Top bar** (`components/TopBar.tsx`): logo, **Game | Realistic** switch (see "Two modes"),
+  Cases / Explore / Notebook, target menu, name or coordinate search, field-of-view control (Explore), Share menu (copy link,
+  open in Aladin Lite), progress dots, theme toggle, Tour, Words.
+- **Main tool** (`screens/Playfield.tsx`, used for cases and Explore): left navigator (bands x visits map with exposure counts, band legend,
+  visit table with windows and mid-dates, Step through Epochs/Bands, "Shown now"), centre picture (`components/SkyCanvas.tsx` with RA/Dec
+  gutters, N/E compass, scale bar, cursor read-out in RA/Dec and noise units, flag overlay, catalogue marks with non-overlapping labels),
+  timeline with visits placed by date, Blink / Difference / Stack, speed, a layers bar (flags, pixel grid, magnifier, faint detail,
+  invert, brightness, contrast, stretch), and a right Findings panel (measurement, catalogue check, field data, spectrum empty state,
+  changes in this field).
+- **Game coaching is isolated.** All coaching (goal, steps, chips, hint, "Check the catalog", the shown answer, and the Explore notes)
+  is rendered inside one block, `<div className="coach-slot" data-coaching>`, at the top of the Findings panel. The tool root carries
+  `data-view="game"`, so a later Realistic view can hide `[data-coaching]` as a unit.
+- **Phone (<= 820 px).** Picture first, then timeline, then a Findings / Layers / Map tab bar that shows one panel at a time.
+- Display-only controls (brightness, contrast) are CSS filters; the stretch (asinh, square root, linear) is shared by all visits.
+- Spectrum is not built; the panel says so instead of drawing a curve.
+
+## Layout (older notes)
 
 ```
 src/
@@ -63,3 +88,101 @@ src/
   screens/    Landing, CaseBoard, Playfield (case + explore), Reveal, FieldReport, ExploreGate
   state/      progress in localStorage
 ```
+
+## Merged interface: what changed
+
+Sky Quest now combines its game flow with the measurement tools and design approach of the SPHEREx Blink prototype
+(adapted from YosefGul/spherex-blink, MIT; credited in code comments).
+
+- **Real data provider** (`src/data/realProvider.ts`, `decode.ts`): reads `GET /api/patch` (contract in `docs/patch-api.md`),
+  polls on HTTP 202 every 2 s (gives up after about 3 minutes with a friendly message) and converts to `SkyPatch`
+  (noise reference = median of all frame noises, masked NaN pixels become 0 and flagged, flag_share >= 51 means flagged).
+  A band with no exposure in a visit becomes an all-zero, all-flagged frame and shows "No photo" in the observation map.
+- **Provider switch** (`src/data/provider.ts`): at startup calls `{VITE_API_BASE}/api/health`. If it answers, real data is used;
+  otherwise the realistic mock stays and the "Demo data" chip shows. `?data=mock` forces the mock. If a practice case fails on the
+  real service, it falls back to the mock for that case.
+- **Measure it** (`src/sky/measure.ts`), **catalogue check** (`catalogue.ts`, `src/data/gaiaApi.ts`), **changes in the field** (`changes.ts`).
+- **Observation map** (bands x visits matrix), Measure and Changes tabs, discovery notebook with CSV export (Field report),
+  glossary ("Words"), tour ("Tour", opens once, remembered), three-zone layout and a bottom sheet at 820 px and below (tap the handle to cycle three heights).
+
+## Run against real data
+
+```
+# terminal 1: the data service (backend or imaging dev server) on port 8000
+python -m imaging.dev_server --cache <cache dir> --port 8000
+# terminal 2
+npm run dev        # /api is proxied to http://localhost:8000
+```
+Without a service: `node scripts/fakeServer.mjs` starts a synthetic stand-in that speaks the same contract (not real SPHEREx data).
+For a deployed service set `VITE_API_BASE`.
+
+## Tests
+
+`npm test` (vitest): decode, conversion (orientation, flags, noise, null frames), polling, measuring (including the sign of Dec motion),
+catalogue propagation and verdicts, changes detector. `npm run build`, `npm run lint`.
+
+## Known limits
+
+- Dark theme only; no light theme yet. Share link works; `&embed=1` and the spectrum chart are not built.
+- Measuring and the changes detector are approximate (saturated stars, crowded fields, faint dots); the interface says so.
+- Game tolerances are in native 6.15 arcsec pixels; real patches use a 3.075 arcsec grid and the answer key rescales for it.
+- Not tested against the real imaging dev server (it did not exist yet); tested against `scripts/fakeServer.mjs`.
+- The bottom sheet is tap-to-cycle, not draggable.
+
+## What we learned running it on real SPHEREx data
+
+Checked on 14 Nov 2026 with `python -m imaging.dev_server` and the five cached targets (the numbers below are measurements):
+
+- **Visits (photos).** The practice cases ask the backend for `gap_days=30, max_span_days=60` (R Draconis: `60 / 150`), which gives
+  three visits with all three bands for Barnard's Star, WISE 0855 and RW Aurigae. The server defaults (10 / 30) give 7 to 16 visits
+  with one or two bands only. See `docs/patch-api.md`.
+- **Exact coordinates.** Practice cases send the positions from `pipeline/targets.json` (`CASE_CENTRES` in `src/data/provider.ts`).
+  They must stay identical: a field centred one arcsecond away is not found in the cache by the real backend.
+- **Saturated stars.** Barnard's Star is flagged in 98% of its aperture at 1.4 and 3.1 µm, and its "brightness change" there is an
+  artefact (+34% between visits), while at 4.7 µm it is stable within 1%. R Draconis is saturated in all three bands. The answer key
+  (`src/sky/analysis.ts`) therefore ignores bands that are at least 70% flagged and, if every band is saturated, says so and falls back
+  on catalogue knowledge (`variable: true` in `catalog.ts`) instead of inventing a number.
+- **`noise: null`.** The backend sends `null` when it cannot measure the noise; it counts as the reference noise (dividing null gave 0).
+- **Gaia.** The dev server does not serve `/api/gaia`; the catalogue check then uses the five built-in objects and says so.
+
+
+## Two modes: Game and Realistic
+
+The **Game | Realistic** switch is in the top bar (also on phones), and Realistic has a second entry on the Landing page
+("Explore the data in detail"). The choice is kept in the address and in `localStorage` (`skyquest.mode.v1`).
+
+- **Game**: guided practice cases and coaching, as before. Requests exactly `dets=2,4,6`.
+- **Realistic** (`screens/RealisticTool.tsx`, root `data-view="realistic"`, no `[data-coaching]`, no chips, badges or hints):
+  an unsimplified explorer. Requests `dets=1,...,6` with a visit grouping chosen by the visitor (Fine 10/30 days, Normal 30/60,
+  Coarse 60/150). It never falls back to demo data: a failing or unreachable service shows its error text
+  (`?data=mock` is the only way to see demo data, which has three bands and no physical units; the views that need real data hide themselves).
+  All its sentences are in `src/ui/realisticText.ts`.
+
+URL: `#/explore?ra=&dec=&fov=&view=realistic&band=D5&visit=2&ref=1&mode=blink|diff|stack&stretch=linear|asinh|sqrt|log&lo=5&hi=99.5&group=fine|normal|coarse&layer=none|flags|heavy`
+(`visit` and `ref` count from 1; defaults are omitted). Old links without `view` open in the remembered mode (Game for new visitors).
+The address bar is updated as you change the view, and Share copies the same link.
+
+What Realistic shows: bands x visits table with exposure counts and holes ("no photo"), band legend with wavelength ranges, visits table;
+RA/Dec gutters, compass, scale bar, cursor read-out in MJy/sr +/- noise, colour bar in MJy/sr, stretch (linear, asinh, square root, log) with
+percentile cuts and their physical values, blink / difference (choice of reference visit) / stack (choice of visits, per band);
+quality layers (flag share, heavily flagged); marked source (position, shift with uncertainty, proper motion, position angle, per-visit table);
+aperture photometry per band and visit in mJy with flagged share and lower limits, flux-versus-date chart, band ratios; catalogue sources in view
+(Gaia when `/api/gaia` answers, else the built-in five); changes in the field; candidates with CSV export; data panel (source, scale, field, visits,
+grouping, exposures per collection, noise in MJy/sr, flagged and no-data shares); spectrum from `/api/spectrum` if the server has it.
+
+What it does not show: no zodiacal-light layer, no 102-channel spectrum, no model fits (ratios are plain flux ratios). Photometry errors assume
+independent pixels, which the resampled grid is not, so they are underestimates. Cutouts are 0.1 degree wide: larger fields have no-data edges.
+The spectrum chart was tested only with a fake response, never against the real backend. Non-cached positions are not served by the imaging dev server.
+
+**No-data pixels** (masked / NaN in the archive) are painted as hatched mid-grey in both modes, with a legend entry in Realistic mode.
+
+## Languages (Turkish and English)
+
+TR | EN switch in the top bar. Choice order: `?lang=tr|en` in the address (so a shared link opens in its language) > saved choice (`skyquest.lang.v1`) > Turkish if
+`navigator.language` starts with "tr" > English. `<html lang>`, the title and the description follow. The layer is `src/i18n/`
+(`en.ts` is the source of truth, `tr.ts` has the same keys, enforced by TypeScript; texts live in `src/i18n/parts/`).
+`t(key, {vars})`, `tp(key, n)` for plurals, `useI18n()` in components; numbers and dates go through `Intl` (`format.ts`).
+Visit labels and windows are computed from the MJD numbers (`data/epochs.ts`), never from the server's English strings.
+Sentences built in code are structured data formatted at render time (`truthText`, `verdictText`, `changeAmountText`).
+Limits: server `warnings` are shown as received (English); candidates saved before this change keep their English verdict sentence;
+CSV column names stay English.

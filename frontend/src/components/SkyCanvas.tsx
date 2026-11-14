@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { CompareMode, Detail, Pt, SkyPatch } from '../data/types';
-import { mean, paintDiff, paintImage, refNoise, sharedStretch, subtract } from '../sky/render';
+import { maskedMean, paintDiff, paintImage, refNoise, sharedStretch, subtract, unionMask, type Stretch, type StretchFn } from '../sky/render';
+import { formatMJySr } from '../lib/format';
+import { formatDec, formatRa, pixelToSky } from '../sky/astro';
+import { num } from '../i18n';
+import { useI18n } from '../i18n/react';
 
 export interface Ring {
   x: number;
@@ -31,65 +35,232 @@ interface Props {
   tapLabel?: string;
   className?: string;
   children?: ReactNode;
+  /** The full scientific frame: RA/Dec gutters, compass, scale bar and cursor read-out. */
+  chrome?: boolean;
+  /** Paint flagged (unreliable or saturated) pixels in magenta. */
+  showFlags?: boolean;
+  /** Display-only brightness and contrast (CSS filter), 1 = unchanged. */
+  brightness?: number;
+  contrast?: number;
+  stretch?: StretchFn;
+  /** Explicit stretch (low and high cut, function). Overrides `detail` and `stretch`. Used by Realistic mode. */
+  stretchOverride?: Stretch;
+  /** Quality layer drawn over the picture: share of exposures that flagged each pixel, or heavily flagged pixels. */
+  quality?: 'none' | 'flagshare' | 'heavy';
+  /** Read-out in MJy/sr with its noise (needs patch.noiseRefMJySr), instead of noise units. */
+  physical?: boolean;
+  /** Visit that Difference mode subtracts. Default: the first. */
+  refEpoch?: number;
+  /** Visits that Stack mode adds. Default: all with a photo. */
+  stackEpochs?: number[];
 }
 
+/** A pixel flagged in at least half of the exposures: in practice mostly saturated stellar cores. */
+export const HEAVY_FLAG_SHARE = 128;
+
 const ZOOM = 2.5;
+const NICE_ARCSEC = [5, 10, 20, 30, 60, 120, 300, 600];
+
+function arcLabel(a: number) {
+  return a >= 60 ? `${a / 60}′` : `${a}″`;
+}
+
+/** Label placement that never lets two labels overlap: earlier rings win, later ones are dropped. */
+function placeLabels(items: { x: number; y: number; r: number; text: string }[], w: number, h: number) {
+  const placed: { x0: number; y0: number; x1: number; y1: number }[] = [];
+  const out: { left: number; top: number; text: string }[] = [];
+  for (const it of items) {
+    const bw = it.text.length * 6.6 + 8;
+    const bh = 16;
+    const options = [
+      { x0: it.x + it.r + 4, y0: it.y - bh / 2 },
+      { x0: it.x - it.r - 4 - bw, y0: it.y - bh / 2 },
+      { x0: it.x - bw / 2, y0: it.y - it.r - 4 - bh },
+      { x0: it.x - bw / 2, y0: it.y + it.r + 4 },
+    ];
+    for (const o of options) {
+      const box = { x0: o.x0, y0: o.y0, x1: o.x0 + bw, y1: o.y0 + bh };
+      if (box.x0 < 2 || box.y0 < 2 || box.x1 > w - 2 || box.y1 > h - 2) continue;
+      if (placed.some((p) => box.x0 < p.x1 + 3 && box.x1 > p.x0 - 3 && box.y0 < p.y1 + 2 && box.y1 > p.y0 - 2)) continue;
+      placed.push(box);
+      out.push({ left: box.x0, top: box.y0, text: it.text });
+      break;
+    }
+  }
+  return out;
+}
 
 export function SkyCanvas({
   patch, epoch, band, mode = 'blink', detail = 'standard', invert = false, magnify = false, grid = false,
-  mark = null, rings = [], path, pathColor = '#CFCBF2', focus = null, onTap, tapLabel, className = '', children,
+  mark = null, rings = [], path, pathColor = '#9aa4b2', focus = null, onTap, tapLabel, className = '', children,
+  chrome = false, showFlags = false, brightness = 1, contrast = 1, stretch: stretchFn = 'asinh',
+  stretchOverride, quality = 'none', physical = false, refEpoch = 0, stackEpochs,
 }: Props) {
+  const { t } = useI18n();
   const ref = useRef<HTMLCanvasElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  const [cursor, setCursor] = useState<Pt | null>(null);
   const size = patch.size;
   const bandFrames = useMemo(() => patch.frames.map((f) => f[band]), [patch, band]);
   const noiseRef = refNoise(patch.noise, band);
-  const stretch = useMemo(() => sharedStretch(bandFrames, noiseRef, detail), [bandFrames, noiseRef, detail]);
-  const stack = useMemo(() => (mode === 'stack' ? mean(bandFrames) : null), [bandFrames, mode]);
-  const stackStretch = useMemo(
-    () => (stack ? sharedStretch([stack], noiseRef * 0.6, detail) : null),
-    [stack, noiseRef, detail],
+  const bandMasks = useMemo(() => patch.nodata?.map((n) => n[band]) ?? [], [patch, band]);
+  const stretch = useMemo(
+    () => stretchOverride ?? { ...sharedStretch(bandFrames, noiseRef, detail), fn: stretchFn },
+    [bandFrames, noiseRef, detail, stretchFn, stretchOverride],
   );
+  const stackKey = stackEpochs?.join(',');
+  const stack = useMemo(() => {
+    if (mode !== 'stack') return null;
+    const use = (stackEpochs ?? bandFrames.map((_, e) => e)).filter((e) => !patch.missing?.[e]?.[band]);
+    if (!use.length) return null;
+    return maskedMean(use.map((e) => bandFrames[e]), use.map((e) => bandMasks[e]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bandFrames, bandMasks, mode, stackKey, patch, band]);
+  const stackStretch = useMemo(
+    () => (stack ? (stretchOverride ?? { ...sharedStretch([stack.data], noiseRef * 0.6, detail), fn: stretchFn }) : null),
+    [stack, noiseRef, detail, stretchFn, stretchOverride],
+  );
+
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setBox({ w: el.clientWidth, h: el.clientHeight }));
+    ro.observe(el);
+    setBox({ w: el.clientWidth, h: el.clientHeight });
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const ctx = ref.current?.getContext('2d');
     if (!ctx) return;
     const img = ctx.createImageData(size, size);
+    const here = bandMasks[epoch];
     if (mode === 'diff') {
-      const d = subtract(bandFrames[epoch], bandFrames[0]);
-      paintDiff(img, d, 6 * Math.max(patch.noise[epoch][band], patch.noise[0][band]));
+      const d = subtract(bandFrames[epoch], bandFrames[refEpoch]);
+      paintDiff(img, d, 6 * Math.max(patch.noise[epoch][band], patch.noise[refEpoch][band]), unionMask(here, bandMasks[refEpoch]));
     } else if (mode === 'stack' && stack && stackStretch) {
-      paintImage(img, stack, stackStretch, patch.bands[band].tint, invert);
+      paintImage(img, stack.data, stackStretch, patch.bands[band].tint, invert, stack.nodata);
     } else {
-      paintImage(img, bandFrames[epoch], stretch, patch.bands[band].tint, invert);
+      paintImage(img, bandFrames[epoch], stretch, patch.bands[band].tint, invert, here);
+    }
+    const share = patch.flagShare?.[epoch]?.[band];
+    if (quality !== 'none' && share && !patch.missing?.[epoch]?.[band]) {
+      const o = img.data;
+      for (let i = 0; i < share.length; i++) {
+        if (here?.[i]) continue;
+        const v = share[i];
+        if (quality === 'flagshare') {
+          if (!v) continue;
+          const t = v / 255;
+          const a = 0.25 + 0.6 * t;
+          // yellow (few exposures flagged) to magenta (all of them)
+          const cr = 255, cg = 214 - 170 * t, cb = 40 + 150 * t;
+          o[i * 4] = o[i * 4] * (1 - a) + cr * a;
+          o[i * 4 + 1] = o[i * 4 + 1] * (1 - a) + cg * a;
+          o[i * 4 + 2] = o[i * 4 + 2] * (1 - a) + cb * a;
+        } else if (v >= HEAVY_FLAG_SHARE) {
+          o[i * 4] = o[i * 4] * 0.35 + 255 * 0.65;
+          o[i * 4 + 1] = o[i * 4 + 1] * 0.35 + 40 * 0.65;
+          o[i * 4 + 2] = o[i * 4 + 2] * 0.35 + 160 * 0.65;
+        }
+      }
+    }
+    if (showFlags && !patch.missing?.[epoch]?.[band]) {
+      const fl = patch.flags[epoch][band];
+      const o = img.data;
+      for (let i = 0; i < fl.length; i++) {
+        if (fl[i]) {
+          o[i * 4] = o[i * 4] * 0.35 + 255 * 0.65;
+          o[i * 4 + 1] = o[i * 4 + 1] * 0.35 + 40 * 0.65;
+          o[i * 4 + 2] = o[i * 4 + 2] * 0.35 + 160 * 0.65;
+        }
+      }
     }
     ctx.putImageData(img, 0, 0);
-  }, [bandFrames, epoch, band, mode, stretch, stack, stackStretch, invert, patch, size]);
+  }, [bandFrames, bandMasks, epoch, band, mode, stretch, stack, stackStretch, invert, patch, size, showFlags, quality, refEpoch]);
 
   const pct = (v: number) => ((v + 0.5) / size) * 100;
   const scale = magnify ? ZOOM : 1;
   const anchor = focus ?? mark;
   const origin = anchor ? { x: pct(anchor.x), y: pct(anchor.y) } : { x: 50, y: 50 };
+  const ox = origin.x / 100, oy = origin.y / 100;
+  // screen fraction <-> image pixel
+  const fracToPix = (fx: number, fy: number): Pt => ({
+    x: (ox + (fx - ox) / scale) * size - 0.5,
+    y: (oy + (fy - oy) / scale) * size - 0.5,
+  });
+  const pixToFrac = (x: number, y: number) => ({
+    fx: ox + (((x + 0.5) / size) - ox) * scale,
+    fy: oy + (((y + 0.5) / size) - oy) * scale,
+  });
 
   function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
     if (!onTap) return;
     const r = e.currentTarget.getBoundingClientRect();
     if (e.detail === 0) {
-      // keyboard activation: mark the centre of the image
       onTap({ x: (size - 1) / 2, y: (size - 1) / 2 });
       return;
     }
-    const fx = (e.clientX - r.left) / r.width;
-    const fy = (e.clientY - r.top) / r.height;
-    const ox = origin.x / 100, oy = origin.y / 100;
-    const cx = ox + (fx - ox) / scale;
-    const cy = oy + (fy - oy) / scale;
-    onTap({ x: cx * size - 0.5, y: cy * size - 0.5 });
+    onTap(fracToPix((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height));
   }
 
-  return (
-    <div className={`sky ${className}`}>
+  function handleMove(e: React.PointerEvent<HTMLElement>) {
+    if (!chrome) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    setCursor(fracToPix((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height));
+  }
+
+  const ticks = [0.1, 0.3, 0.5, 0.7, 0.9];
+  const readout = (() => {
+    if (!cursor || cursor.x < -0.5 || cursor.y < -0.5 || cursor.x > size - 0.5 || cursor.y > size - 0.5) return null;
+    const s = pixelToSky(patch, cursor.x, cursor.y);
+    const ix = Math.min(size - 1, Math.max(0, Math.round(cursor.x)));
+    const iy = Math.min(size - 1, Math.max(0, Math.round(cursor.y)));
+    const k = iy * size + ix;
+    const noData = !!patch.nodata?.[epoch]?.[band]?.[k] || (mode === 'diff' && !!patch.nodata?.[refEpoch]?.[band]?.[k]);
+    const v = mode === 'diff' ? bandFrames[epoch][k] - bandFrames[refEpoch][k] : bandFrames[epoch][k];
+    const nz = mode === 'diff' ? Math.hypot(patch.noise[epoch][band], patch.noise[refEpoch][band]) : patch.noise[epoch][band];
+    const share = patch.flagShare?.[epoch]?.[band]?.[k];
+    let text: string;
+    if (noData) text = t('canvas.noData');
+    else if (physical && patch.noiseRefMJySr) text = `${formatMJySr(v * patch.noiseRefMJySr)} ± ${formatMJySr(nz * patch.noiseRefMJySr, true)} MJy/sr`;
+    else text = `${v >= 0 ? '+' : '−'}${num(Math.abs(v), 1)} σ`;
+    const flagged = share !== undefined ? share >= 51 : !!patch.flags[epoch][band][k];
+    return { ra: formatRa(s.ra), dec: formatDec(s.dec), text, flagged, share: noData ? undefined : share };
+  })();
+
+  // Scale bar: the longest "nice" length that takes at most a third of the picture width.
+  const shownArcsec = (size * patch.pixelScale) / scale;
+  const bar = [...NICE_ARCSEC].reverse().find((a) => a / shownArcsec <= 0.3) ?? NICE_ARCSEC[0];
+
+  const labels = useMemo(() => {
+    if (!box.w) return [];
+    const items = rings.filter((r) => r.label).map((r) => {
+      const f = pixToFrac(r.x, r.y);
+      const rr = (((r.r ?? 2.2) * scale) / size) * box.w;
+      return { x: f.fx * box.w, y: f.fy * box.h, r: rr, text: r.label as string, color: r.color };
+    });
+    const placed = placeLabels(items, box.w, box.h);
+    return placed.map((p) => ({ ...p, color: items.find((i) => i.text === p.text)?.color ?? '#fff' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rings, box.w, box.h, scale, ox, oy, size]);
+
+  const view = (
+    <div
+      ref={boxRef}
+      className={`sky ${chrome ? 'sky-chrome' : ''} ${className}`}
+      onPointerMove={handleMove}
+      onPointerLeave={() => setCursor(null)}
+    >
       <div className="sky-zoom" style={{ transform: `scale(${scale})`, transformOrigin: `${origin.x}% ${origin.y}%` }}>
-        <canvas ref={ref} width={size} height={size} className="sky-canvas" />
+        <canvas
+          ref={ref}
+          width={size}
+          height={size}
+          className="sky-canvas"
+          style={brightness !== 1 || contrast !== 1 ? { filter: `brightness(${brightness}) contrast(${contrast})` } : undefined}
+        />
         {grid && <div className="sky-grid" style={{ backgroundSize: `${100 / size}% ${100 / size}%` }} />}
         {path && path.length > 1 && (
           <svg className="sky-svg" viewBox={`0 0 ${size} ${size}`} preserveAspectRatio="none" aria-hidden="true">
@@ -111,11 +282,7 @@ export function SkyCanvas({
                 width: `${((2 * r) / size) * 100}%`,
                 borderColor: ring.color,
               }}
-            >
-              {ring.label && (
-                <span className="sky-ring-label" style={{ color: ring.color, transform: `scale(${1 / scale})` }}>{ring.label}</span>
-              )}
-            </span>
+            />
           );
         })}
         {mark && (
@@ -125,8 +292,57 @@ export function SkyCanvas({
           />
         )}
       </div>
-      {onTap && <button type="button" className="sky-tap" aria-label={tapLabel ?? 'Sky photo. Tap a spot to mark it.'} onClick={handleClick} />}
+      <div className="sky-labels" aria-hidden="true">
+        {labels.map((l, i) => (
+          <span key={i} className="sky-label" style={{ left: l.left, top: l.top, color: l.color }}>{l.text}</span>
+        ))}
+      </div>
+      {onTap && <button type="button" className="sky-tap" aria-label={tapLabel ?? t('canvas.tap')} onClick={handleClick} />}
+      {chrome && (
+        <>
+          <svg className="sky-compass" width="44" height="44" viewBox="0 0 44 44" aria-label={t('canvas.compass')} role="img">
+            <g stroke="#fff" strokeWidth="1.5" fill="none" strokeLinecap="round">
+              <path d="M22 38V8M20 13l2-5 2 5" />
+              <path d="M30 30H8M13 28l-5 2 5 2" />
+            </g>
+            <text x="22" y="6" textAnchor="middle" fontSize="9" fill="#fff" fontFamily="var(--mono)">N</text>
+            <text x="5" y="27" textAnchor="middle" fontSize="9" fill="#fff" fontFamily="var(--mono)">E</text>
+          </svg>
+          <div className="sky-scale" aria-label={t('canvas.scale', { v: arcLabel(bar) })}>
+            <span className="sky-scale-bar" style={{ width: `${(bar / shownArcsec) * 100}%`, minWidth: 8 }} />
+            <span>{arcLabel(bar)}</span>
+          </div>
+          <div className="sky-readout" aria-hidden={!readout}>
+            {readout ? (
+              <>
+                <span>{readout.ra}</span><span>{readout.dec}</span>
+                <span>{readout.text}{readout.share !== undefined && physical ? ` · ${t('canvas.flag', { v: Math.round((readout.share / 255) * 100) })}` : readout.flagged ? ` · ${t('canvas.flagged')}` : ''}</span>
+              </>
+            ) : <span className="muted">{t('canvas.hover')}</span>}
+          </div>
+        </>
+      )}
       {children}
+    </div>
+  );
+
+  if (!chrome) return view;
+
+  return (
+    <div className="stage">
+      <div className="gut gut-top" aria-hidden="true">
+        {ticks.map((t) => {
+          const p = fracToPix(t, 0.5);
+          return <span key={t} style={{ left: `${t * 100}%` }}>{formatRa(pixelToSky(patch, p.x, p.y).ra)}</span>;
+        })}
+      </div>
+      <div className="gut gut-left" aria-hidden="true">
+        {ticks.map((t) => {
+          const p = fracToPix(0.5, t);
+          return <span key={t} style={{ top: `${t * 100}%` }}>{formatDec(pixelToSky(patch, p.x, p.y).dec)}</span>;
+        })}
+      </div>
+      {view}
     </div>
   );
 }

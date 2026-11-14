@@ -4,6 +4,8 @@ import { cropFrame, paintImage, type Stretch } from '../sky/render';
 
 interface Props {
   data: Float32Array;
+  /** Pixels without data (masked), painted as hatched grey. */
+  nodata?: Uint8Array;
   size: number;
   center: Pt;
   half: number;
@@ -14,17 +16,23 @@ interface Props {
 }
 
 /** A close-up of the answer region for one epoch, at real pixel resolution. */
-export function CropView({ data, size, center, half, stretch, tint, truth, mark }: Props) {
+export function CropView({ data, nodata, size, center, half, stretch, tint, truth, mark }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   const crop = useMemo(() => cropFrame(data, size, center.x, center.y, half), [data, size, center.x, center.y, half]);
+
+  const cropMask = useMemo(() => {
+    if (!nodata) return undefined;
+    const c = cropFrame(Float32Array.from(nodata), size, center.x, center.y, half);
+    return Uint8Array.from(c.data, (v) => (v > 0 ? 1 : 0));
+  }, [nodata, size, center.x, center.y, half]);
 
   useEffect(() => {
     const ctx = ref.current?.getContext('2d');
     if (!ctx) return;
     const img = ctx.createImageData(crop.size, crop.size);
-    paintImage(img, crop.data, stretch, tint, false);
+    paintImage(img, crop.data, stretch, tint, false, cropMask);
     ctx.putImageData(img, 0, 0);
-  }, [crop.data, crop.size, stretch, tint]);
+  }, [crop.data, crop.size, stretch, tint, cropMask]);
 
   const w = crop.size;
   const ring = (p: Pt, r: number) => ({

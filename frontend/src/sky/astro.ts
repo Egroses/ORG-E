@@ -1,4 +1,5 @@
 import type { KnownObject, SkyPatch, TargetId } from '../data/types';
+import { num } from '../i18n/format';
 import { KNOWN } from '../data/catalog';
 
 const DEG = Math.PI / 180;
@@ -41,7 +42,7 @@ export function formatRa(deg: number) {
   const mFloat = (h - hh) * 60;
   const mm = Math.floor(mFloat);
   const ss = (mFloat - mm) * 60;
-  return `${pad(hh)}h${pad(mm)}m${ss.toFixed(1).padStart(4, '0')}s`;
+  return `${pad(hh)}h${pad(mm)}m${num(ss, 1).padStart(4, '0')}s`;
 }
 
 export function formatDec(deg: number) {
@@ -57,7 +58,7 @@ export function formatDec(deg: number) {
 export const formatCoords = (ra: number, dec: number) => `${formatRa(ra)} ${formatDec(dec)}`;
 
 const NAME_ALIASES: Record<string, TargetId> = {
-  barnard: 'barnard', barnards: 'barnard', barnardsstar: 'barnard',
+  barnard: 'barnard', barnards: 'barnard', barnardsstar: 'barnard', barnardyldz: 'barnard',
   wise0855: 'wise0855', wise085507: 'wise0855', wise08550714: 'wise0855',
   epsilonindib: 'epsindb', epsindib: 'epsindb', epsindb: 'epsindb', epsilonindi: 'epsindb',
   rwaurigae: 'rwaur', rwaur: 'rwaur',
@@ -107,4 +108,24 @@ function valid(ra: number, dec: number) {
 
 export function knownObjectsList() {
   return Object.values(KNOWN);
+}
+
+/** RA with 0.01 s precision and Dec with 0.1 arcsec precision, for measured positions. */
+export function formatRaFine(deg: number) {
+  const h = deg / 15;
+  const hh = Math.floor(h);
+  const mFloat = (h - hh) * 60;
+  const mm = Math.floor(mFloat);
+  const ss = Math.min((mFloat - mm) * 60, 59.995);
+  return `${pad(hh)}h${pad(mm)}m${num(ss, 2).padStart(5, '0')}s`;
+}
+
+export function formatDecFine(deg: number) {
+  const sign = deg < 0 ? '−' : '+';
+  const a = Math.abs(deg);
+  const dd = Math.floor(a);
+  const mFloat = (a - dd) * 60;
+  const mm = Math.floor(mFloat);
+  const ss = Math.min((mFloat - mm) * 60, 59.95);
+  return `${sign}${pad(dd)}°${pad(mm)}′${num(ss, 1).padStart(4, '0')}″`;
 }

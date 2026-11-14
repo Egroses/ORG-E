@@ -1,19 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Chip, LoadStep, PatchRequest, Pt, SkyPatch, TargetId } from './data/types';
 import { CASES, FOV_OPTIONS, KNOWN } from './data/catalog';
-import { caseRequest, loadPatch } from './data/provider';
+import { caseRequest, loadPatch, patchKey, realisticRequest } from './data/provider';
 import { answerKey, evaluate } from './sky/analysis';
 import { lookupName, parseCoords } from './sky/astro';
 import {
-  clearReveal, loadProgress, loadReveal, saveProgress, storeReveal, type Observation, type Progress, type RevealState,
+  clearReveal, loadProgress, loadReveal, saveProgress, storeReveal, type Candidate, type Observation, type Progress, type RevealState,
 } from './state/progress';
-import { TopBar } from './components/TopBar';
+import { TopBar, type NavKey, type ToolControls } from './components/TopBar';
+import { aladinUrl } from './lib/format';
+import { applyTheme, loadTheme, type Theme } from './state/theme';
 import { Landing } from './screens/Landing';
 import { CaseBoard } from './screens/CaseBoard';
 import { Playfield } from './screens/Playfield';
+import { RealisticTool } from './screens/RealisticTool';
+import {
+  DEFAULT_REALISTIC, loadViewMode, parseRealistic, parseViewMode, realisticPairs, saveViewMode, type RealisticState, type ViewMode,
+} from './state/viewState';
+import { R } from './ui/realisticText';
+import { errorText } from './data/errors';
+import { useI18n } from './i18n/react';
 import { Reveal } from './screens/Reveal';
 import { FieldReport } from './screens/FieldReport';
 import { ExploreGate } from './screens/ExploreGate';
+import { Glossary } from './components/Glossary';
+import { Tour } from './components/Tour';
+import { tourSeen } from './state/tour';
 
 /**
  * Every screen has its own address (hash routes), so the browser's back button, refresh and shared links
@@ -26,17 +38,21 @@ type Route =
   | { name: 'case'; id: TargetId }
   | { name: 'reveal'; id: TargetId }
   | { name: 'report' }
-  | { name: 'explore'; req: PatchRequest | null };
+  | { name: 'explore'; req: PatchRequest | null; view: ViewMode; rs: RealisticState };
 
 interface LoadState {
   step: LoadStep | null;
   patch: SkyPatch | null;
-  error: string | null;
+  /** What went wrong, kept as data: the text is made in the current language when it is shown. */
+  error: { err: unknown; strict: boolean } | null;
 }
 
 const isTarget = (s: string | undefined): s is TargetId => !!s && CASES.some((c) => c.id === s);
 
+/** The position part of a link. */
 const reqQuery = (req: PatchRequest) => `ra=${req.ra.toFixed(5)}&dec=${req.dec.toFixed(5)}&fov=${req.fovDeg}`;
+/** Key of a load: position, field, grouping, detectors (so Game and Realistic loads never mix). */
+const loadKey = patchKey;
 
 function parseReq(params: URLSearchParams): PatchRequest | null {
   if (!params.has('ra') || !params.has('dec')) return null;
@@ -54,13 +70,21 @@ function parseReq(params: URLSearchParams): PatchRequest | null {
   return req;
 }
 
-function parseRoute(hash: string): Route {
+function parseRoute(hash: string, storedMode: ViewMode): Route {
   const [path, query = ''] = hash.replace(/^#/, '').split('?');
   const [head, id, tail] = path.split('/').filter(Boolean);
   if (head === 'cases') return { name: 'board' };
   if (head === 'case' && isTarget(id)) return tail === 'result' ? { name: 'reveal', id } : { name: 'case', id };
   if (head === 'report') return { name: 'report' };
-  if (head === 'explore') return { name: 'explore', req: parseReq(new URLSearchParams(query)) };
+  if (head === 'explore') {
+    const params = new URLSearchParams(query);
+    // The address wins; without `view` an old link uses the remembered mode (Game for new visitors).
+    const view = parseViewMode(params) ?? storedMode;
+    const rs = parseRealistic(params);
+    const base = parseReq(params);
+    const req = base && view === 'realistic' ? realisticRequest(base.ra, base.dec, base.fovDeg, rs.group) : base;
+    return { name: 'explore', req, view, rs };
+  }
   return { name: 'landing' };
 }
 
@@ -71,7 +95,11 @@ function routeHash(r: Route): string {
     case 'case': return `#/case/${r.id}`;
     case 'reveal': return `#/case/${r.id}/result`;
     case 'report': return '#/report';
-    case 'explore': return r.req ? `#/explore?${reqQuery(r.req)}` : '#/explore';
+    case 'explore': {
+      const parts = r.req ? [reqQuery(r.req)] : [];
+      parts.push(...(r.view === 'realistic' ? realisticPairs(r.rs).map(([k, v]) => `${k}=${v}`) : ['view=game']));
+      return `#/explore?${parts.join('&')}`;
+    }
   }
 }
 
@@ -79,33 +107,49 @@ function initialHash() {
   // Older links used ?ra=..&dec=.. on the page itself; move them to the explore route.
   const legacy = parseReq(new URLSearchParams(window.location.search));
   if (legacy) {
-    const h = routeHash({ name: 'explore', req: legacy });
+    const h = routeHash({ name: 'explore', req: legacy, view: 'game', rs: DEFAULT_REALISTIC });
     window.history.replaceState(null, '', window.location.pathname + h);
     return h;
   }
   return window.location.hash;
 }
 
-function resolveQuery(text: string, fov: number): { req: PatchRequest } | { error: string } {
+/** `error` is set when the text is neither a known name nor coordinates; the form words it in the current language. */
+function resolveQuery(text: string, fov: number, view: ViewMode, group: RealisticState['group']): { req: PatchRequest } | { error: true } {
   const id = lookupName(text);
-  if (id) return { req: caseRequest(id, fov) };
+  if (id) {
+    const c = caseRequest(id, fov);
+    return { req: view === 'realistic' ? realisticRequest(c.ra, c.dec, fov, group) : c };
+  }
   const c = parseCoords(text);
-  if (c) return { req: { ra: c.ra, dec: c.dec, fovDeg: fov } };
-  return { error: 'Type a name like “WISE 0855” or coordinates like 08h55m10s −07°14′42″.' };
+  if (c) return { req: view === 'realistic' ? realisticRequest(c.ra, c.dec, fov, group) : { ra: c.ra, dec: c.dec, fovDeg: fov } };
+  return { error: true };
 }
 
-const shareUrl = (req: PatchRequest) =>
-  `${window.location.origin}${window.location.pathname}${routeHash({ name: 'explore', req })}`;
+const shareUrl = (req: PatchRequest, view: ViewMode = 'game', rs: RealisticState = DEFAULT_REALISTIC) =>
+  `${window.location.origin}${window.location.pathname}${routeHash({ name: 'explore', req, view, rs })}`;
 
 export default function App() {
+  const { t } = useI18n();
   const [hash, setHash] = useState(initialHash);
-  const route = useMemo(() => parseRoute(hash), [hash]);
+  const [storedMode, setStoredMode] = useState<ViewMode>(loadViewMode);
+  const route = useMemo(() => parseRoute(hash, storedMode), [hash, storedMode]);
+  // Latest Realistic view state (band, visit, stretch, ...), kept for the share link and the address bar.
+  const [liveRaw, setLive] = useState<{ key: string; s: RealisticState } | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [progress, setProgress] = useState<Progress>(loadProgress);
   const [patches, setPatches] = useState<Partial<Record<TargetId, SkyPatch>>>({});
   const [reveal, setReveal] = useState<RevealState | null>(loadReveal);
   const [loads, setLoads] = useState<Record<string, LoadState>>({});
   const [queryText, setQueryText] = useState('');
+  const [theme, setTheme] = useState<Theme>(loadTheme);
+  useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
+  const toggleTheme = () => setTheme((t) => { const n = t === 'dark' ? 'light' : 'dark'; applyTheme(n); return n; });
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
+  const [tourForced, setTourForced] = useState(false);
+  const [tourClosed, setTourClosed] = useState(false);
+  // The short tour opens once, the first time someone reaches a photo screen; the Tour button reopens it.
+  const tourOpen = tourForced || ((route.name === 'case' || route.name === 'explore') && !tourClosed && !tourSeen());
 
   useEffect(() => {
     for (const c of CASES) {
@@ -133,12 +177,12 @@ export default function App() {
   const exploreReq = route.name === 'explore' ? route.req : null;
   useEffect(() => {
     if (!exploreReq) return;
-    const k = reqQuery(exploreReq);
+    const k = loadKey(exploreReq);
     const empty: LoadState = { step: null, patch: null, error: null };
     const set = (s: Partial<LoadState>) => setLoads((prev) => ({ ...prev, [k]: { ...empty, ...prev[k], ...s } }));
     loadPatch(exploreReq, (step) => set({ step, error: null }))
       .then((patch) => set({ patch, step: 'done', error: null }))
-      .catch(() => set({ step: null, patch: null, error: 'Could not load that patch of sky. Try again or pick another spot.' }));
+      .catch((e: unknown) => set({ step: null, patch: null, error: { err: e, strict: !!exploreReq.strict } }));
   }, [exploreReq]);
 
   const navigate = useCallback((r: Route) => {
@@ -149,7 +193,30 @@ export default function App() {
 
   const goHome = () => navigate({ name: 'landing' });
   const goBoard = () => navigate({ name: 'board' });
-  const goExplore = () => navigate({ name: 'explore', req: null });
+  const goExplore = () => navigate({ name: 'explore', req: null, view: storedMode, rs: DEFAULT_REALISTIC });
+  const goRealistic = () => {
+    saveViewMode('realistic');
+    setStoredMode('realistic');
+    navigate({ name: 'explore', req: null, view: 'realistic', rs: DEFAULT_REALISTIC });
+  };
+  const exploreRoute = route.name === 'explore' ? route : null;
+  const curKey = exploreRoute?.req ? loadKey(exploreRoute.req) : '';
+  // Only a state that belongs to the field on screen counts (a stale one would overwrite a freshly opened link).
+  const live = liveRaw && liveRaw.key === curKey ? liveRaw.s : null;
+
+  /** Game | Realistic switch. In Explore the same spot is kept; from a practice case the case position is used. */
+  function switchMode(m: ViewMode) {
+    saveViewMode(m);
+    setStoredMode(m);
+    const fov = exploreRoute?.req?.fovDeg ?? 0.1;
+    let at: { ra: number; dec: number } | null = exploreRoute?.req ?? null;
+    if (!at && route.name === 'case') at = caseRequest(route.id, fov);
+    if (m === 'realistic') {
+      navigate({ name: 'explore', req: at ? realisticRequest(at.ra, at.dec, fov, DEFAULT_REALISTIC.group) : null, view: 'realistic', rs: DEFAULT_REALISTIC });
+    } else if (exploreRoute) {
+      navigate({ name: 'explore', req: at ? { ra: at.ra, dec: at.dec, fovDeg: fov } : null, view: 'game', rs: DEFAULT_REALISTIC });
+    }
+  }
   const openCase = (id: TargetId) => {
     setAttempt((a) => a + 1);
     navigate({ name: 'case', id });
@@ -175,10 +242,10 @@ export default function App() {
   }
 
   function handleSearch(text: string, fov: number): string | null {
-    const r = resolveQuery(text, fov);
-    if ('error' in r) return r.error;
+    const r = resolveQuery(text, fov, exploreRoute?.view ?? 'game', exploreRoute?.rs.group ?? DEFAULT_REALISTIC.group);
+    if ('error' in r) return 'invalid';
     setQueryText(text);
-    navigate({ name: 'explore', req: r.req });
+    navigate({ name: 'explore', req: r.req, view: exploreRoute?.view ?? 'game', rs: { ...DEFAULT_REALISTIC, group: exploreRoute?.rs.group ?? DEFAULT_REALISTIC.group } });
     return null;
   }
 
@@ -194,20 +261,64 @@ export default function App() {
     return n;
   }
 
-  const top = (opts: { cases?: boolean; center?: React.ReactNode } = {}) => (
-    <TopBar results={progress.results} onHome={goHome} onExplore={goExplore} onCases={opts.cases ? goBoard : undefined} center={opts.center} />
+  function saveCandidate(c: Omit<Candidate, 'id' | 'savedAt'>) {
+    const full: Candidate = { ...c, id: `c${Date.now().toString(36)}`, savedAt: new Date().toISOString() };
+    setProgress((p) => ({ ...p, candidates: [...p.candidates, full] }));
+  }
+
+  function removeCandidate(id: string) {
+    setProgress((p) => ({ ...p, candidates: p.candidates.filter((c) => c.id !== id) }));
+  }
+
+  const spotShare = (ra: number, dec: number, fovDeg: number) => ({
+    url: shareUrl({ ra, dec, fovDeg }),
+    aladin: aladinUrl(ra, dec, fovDeg),
+  });
+
+  // The address bar always carries the Realistic view state, so a copied link reopens the same picture.
+  useEffect(() => {
+    if (!exploreRoute || exploreRoute.view !== 'realistic' || !exploreRoute.req || !live) return;
+    const h = routeHash({ ...exploreRoute, rs: live });
+    if (h !== window.location.hash) window.history.replaceState(null, '', window.location.pathname + window.location.search + h);
+  }, [exploreRoute, live]);
+
+  const top = (active: NavKey, tool?: ToolControls) => (
+    <>
+      {glossaryOpen && <Glossary onClose={() => setGlossaryOpen(false)} />}
+      {tourOpen && <Tour onClose={() => { setTourForced(false); setTourClosed(true); }} />}
+      <TopBar
+        results={progress.results}
+        active={active}
+        theme={theme}
+        onTheme={toggleTheme}
+        onHome={goHome}
+        onCases={goBoard}
+        onExplore={goExplore}
+        mode={route.name === 'explore' ? route.view : 'game'}
+        onMode={switchMode}
+        onReport={() => navigate({ name: 'report' })}
+        onGlossary={() => setGlossaryOpen(true)}
+        onTour={() => setTourForced(true)}
+        tool={tool}
+      />
+    </>
   );
 
   if (route.name === 'landing') {
-    return <Landing heroPatch={patches.barnard ?? null} onStart={goBoard} onJump={(t) => handleSearch(t, 0.1)} onExplore={goExplore} />;
+    return (
+      <div className="app">
+        {top('home')}
+        <Landing heroPatch={patches.barnard ?? null} patches={patches} results={progress.results} onStart={goBoard} onOpen={openCase} onJump={(t) => handleSearch(t, 0.1)} onRealistic={goRealistic} />
+      </div>
+    );
   }
 
   if (route.name === 'board') {
     return (
-      <>
-        {top()}
+      <div className="app">
+        {top('cases')}
         <CaseBoard results={progress.results} patches={patches} onOpen={openCase} onExplore={goExplore} onReset={resetProgress} />
-      </>
+      </div>
     );
   }
 
@@ -221,17 +332,17 @@ export default function App() {
     const next = nextOpenCase(id);
     if (!patch) {
       return (
-        <>
-          {top({ cases: true })}
-          <main className="page"><p className="page-lead">Loading the photos…</p></main>
-        </>
+        <div className="app">
+          {top('cases')}
+          <main className="page"><p className="t-lead c-2">{t('common.loadingPhotos')}</p></main>
+        </div>
       );
     }
     const answer = answerKey(patch, KNOWN[id]);
     const ev = evaluate(answer, shownReveal.mark, shownReveal.chips, shownReveal.gaveUp);
     return (
-      <>
-        {top({ cases: true })}
+      <div className="app">
+        {top('cases')}
         <Reveal
           caseDef={def}
           patch={patch}
@@ -242,11 +353,11 @@ export default function App() {
           chips={shownReveal.chips}
           gaveUp={shownReveal.gaveUp}
           peeked={shownReveal.peeked}
-          nextLabel={next ? 'Next case' : 'See your field report'}
+          nextLabel={next ? t('rev.next') : t('rev.report')}
           onNext={() => (next ? openCase(next.id) : navigate({ name: 'report' }))}
           onRetry={() => openCase(id)}
         />
-      </>
+      </div>
     );
   }
 
@@ -254,16 +365,15 @@ export default function App() {
     const id = route.id;
     const caseDef = CASES.find((c) => c.id === id)!;
     const patch = patches[id];
+    const tool: ToolControls = {
+      target: id,
+      onTarget: openCase,
+      onSearch: (t) => handleSearch(t, 0.1),
+      share: patch ? spotShare(patch.center.ra, patch.center.dec, patch.fovDeg) : undefined,
+    };
     return (
-      <>
-        {top({
-          cases: true,
-          center: (
-            <span className="topbar-case">
-              <span style={{ color: caseDef.color }}>Case {caseDef.n}</span> {caseDef.nick}
-            </span>
-          ),
-        })}
+      <div className="app app-tool">
+        {top('cases', tool)}
         {patch ? (
           <Playfield
             key={`${id}-${attempt}`}
@@ -273,51 +383,84 @@ export default function App() {
             onReveal={(mark, chips, gaveUp, peeked) => handleReveal(id, mark, chips, gaveUp, peeked)}
           />
         ) : (
-          <main className="page"><p className="page-lead">Loading the photos…</p></main>
+          <main className="page"><p className="t-lead c-2">{t('common.loadingPhotos')}</p></main>
         )}
-      </>
+      </div>
     );
   }
 
   if (route.name === 'report') {
     return (
-      <>
-        {top({ cases: true })}
+      <div className="app">
+        {top('report')}
         <FieldReport
           results={progress.results}
           heroPatch={patches.barnard ?? null}
+          candidates={progress.candidates}
+          onRemoveCandidate={removeCandidate}
           onExplore={goExplore}
           onReset={() => { resetProgress(); goBoard(); }}
         />
-      </>
+      </div>
     );
   }
 
   // explore
   const req = route.req;
-  const load = req ? loads[reqQuery(req)] : undefined;
+  const realistic = route.view === 'realistic';
+  const load = req ? loads[loadKey(req)] : undefined;
+  const caseHere = req ? CASES.find((c) => { const r = caseRequest(c.id, req.fovDeg); return Math.abs(r.ra - req.ra) < 1e-4 && Math.abs(r.dec - req.dec) < 1e-4; }) : undefined;
+  const withFov = (v: number): PatchRequest => (realistic ? realisticRequest(req!.ra, req!.dec, v, route.rs.group) : { ra: req!.ra, dec: req!.dec, fovDeg: v });
+  const exploreTool: ToolControls = {
+    target: caseHere?.id ?? (req ? '' : CASES[0].id),
+    onTarget: (id) => {
+      const c = caseRequest(id, req?.fovDeg ?? 0.1);
+      navigate({ name: 'explore', req: realistic ? realisticRequest(c.ra, c.dec, c.fovDeg, route.rs.group) : { ...c, cached: true }, view: route.view, rs: route.rs });
+    },
+    targetLabel: realistic ? (c) => KNOWN[c.id].name : undefined,
+    onSearch: (t) => handleSearch(t, req?.fovDeg ?? 0.1),
+    fov: req ? { value: req.fovDeg, onChange: (v) => navigate({ name: 'explore', req: withFov(v), view: route.view, rs: realistic ? (live ?? route.rs) : route.rs }) } : undefined,
+    share: req && load?.patch
+      ? (realistic
+        ? { url: shareUrl(req, 'realistic', live ?? route.rs), aladin: aladinUrl(req.ra, req.dec, req.fovDeg), realistic: true }
+        : spotShare(req.ra, req.dec, req.fovDeg))
+      : undefined,
+  };
+  const ready = !!(req && load?.patch);
   return (
-    <>
-      {top({ cases: true })}
-      {req && load?.patch ? (
+    <div className={`app${ready ? ' app-tool' : ''}`}>
+      {top('explore', exploreTool)}
+      {ready && realistic ? (
+        <RealisticTool
+          key={loadKey(req!)}
+          patch={load!.patch!}
+          initial={route.rs}
+          onState={(st) => setLive({ key: loadKey(req!), s: st })}
+          onGroup={(g) => navigate({ name: 'explore', req: realisticRequest(req!.ra, req!.dec, req!.fovDeg, g), view: 'realistic', rs: { ...(live ?? route.rs), group: g, visit: undefined, ref: undefined } })}
+          candidates={progress.candidates}
+          onSaveCandidate={saveCandidate}
+          onRemoveCandidate={removeCandidate}
+        />
+      ) : ready ? (
         <Playfield
-          key={reqQuery(req)}
+          key={loadKey(req!)}
           mode="explore"
-          patch={load.patch}
+          patch={load!.patch!}
           onSaveObservation={saveObservation}
-          explore={{ ra: req.ra, dec: req.dec, fovDeg: req.fovDeg, shareUrl: shareUrl(req) }}
-          onNewSearch={goExplore}
+          onSaveCandidate={saveCandidate}
+          explore={{ ra: req!.ra, dec: req!.dec, fovDeg: req!.fovDeg }}
         />
       ) : (
         <ExploreGate
           initialText={queryText}
           initialFov={req?.fovDeg ?? 0.1}
           loading={req && !load?.error ? load?.step ?? 'finding' : null}
-          error={load?.error ?? null}
+          error={load?.error ? (load.error.strict ? R.loadError(errorText(load.error.err)) : t('gate.loadError', { msg: errorText(load.error.err) })) : null}
+          realistic={realistic}
           onSearch={handleSearch}
           onTryCase={() => openCase(CASES.find((c) => !progress.results[c.id])?.id ?? 'barnard')}
         />
       )}
-    </>
+    </div>
   );
 }

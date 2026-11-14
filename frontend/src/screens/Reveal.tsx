@@ -2,19 +2,16 @@ import { useMemo } from 'react';
 import type { Chip, Outcome, Pt, SkyPatch } from '../data/types';
 import type { CaseDef } from '../data/catalog';
 import { KNOWN } from '../data/catalog';
-import type { AnswerKey } from '../sky/analysis';
+import { truthText, type AnswerKey } from '../sky/analysis';
+import { useI18n } from '../i18n/react';
 import { refNoise, sharedStretch } from '../sky/render';
 import { CropView } from '../components/CropView';
+import { MeasureCard } from '../components/MeasureCard';
+import { measureBest } from '../sky/measure';
+import { checkCatalogue } from '../sky/catalogue';
+import { useCatalogue } from '../data/useCatalogue';
 
-const CHIP_NAMES: Record<Chip, string> = { moved: 'Moved', bright: 'Brightness changed', noclear: 'No clear change', unsure: 'Unsure' };
-
-const COPY: Record<Outcome, { badge: string; title: string; token: string; sub: string; cls: string }> = {
-  great: { badge: 'Sharp Eye', title: 'Matches the catalog', token: 'Case token + Sharp Eye badge', sub: 'Your mark and your call agree with what astronomers have measured.', cls: 'great' },
-  partial: { badge: 'Partly matches', title: 'Partly matches the catalog', token: 'Case token earned', sub: 'One part agrees with the catalog. Retry any time for practice.', cls: 'partial' },
-  miss: { badge: 'No match this time', title: 'Doesn’t match the catalog this time', token: 'Case token earned', sub: 'Every case counts. Check the green rings, then try again.', cls: 'miss' },
-};
-
-const SHOWN = { badge: 'Shown to you', title: 'Here’s what the catalog says', token: 'Case token earned', sub: 'Now you know what to look for. Try again any time for practice.', cls: 'miss' };
+const CLS: Record<Outcome, string> = { great: 'match', partial: 'partial', miss: 'none' };
 
 interface Props {
   caseDef: CaseDef;
@@ -32,60 +29,68 @@ interface Props {
 }
 
 export function Reveal({ caseDef, patch, answer, outcome, hit, mark, chips, gaveUp, peeked, nextLabel, onNext, onRetry }: Props) {
-  const copy = gaveUp ? SHOWN
-    : peeked ? { ...COPY[outcome], badge: 'Practice round', cls: 'miss', token: 'Case token earned', sub: 'You saw the answer first, so this round counts as practice. Retry any time.' }
-      : COPY[outcome];
+  const { t } = useI18n();
+  const copy = gaveUp ? { badge: t('rev.shown.badge'), title: t('rev.shown.title'), token: t('rev.token'), sub: t('rev.shown.sub'), cls: 'none' }
+    : peeked ? { badge: t('rev.practice.badge'), title: t(`rev.${outcome}.title`), token: t('rev.token'), sub: t('rev.practice.sub'), cls: 'none' }
+      : { badge: t(`rev.${outcome}.badge`), title: t(`rev.${outcome}.title`), token: t(outcome === 'great' ? 'rev.great.token' : 'rev.token'), sub: t(`rev.${outcome}.sub`), cls: CLS[outcome] };
   const b = Math.max(0, patch.bands.findIndex((x) => x.id === answer.bestBand));
   const frames = useMemo(() => patch.frames.map((f) => f[b]), [patch, b]);
   const stretch = useMemo(() => sharedStretch(frames, refNoise(patch.noise, b), 'standard'), [frames, patch, b]);
-  const markLine = gaveUp ? 'You asked to be shown' : hit ? 'Right where the catalog puts it' : mark ? 'A little off. The green ring shows where the catalog puts it.' : 'No mark';
-  const callLine = chips.length ? chips.map((c) => CHIP_NAMES[c]).join(', ') : 'No answer picked';
+  const nEp = patch.epochs.length;
+  const mid = Math.floor(nEp / 2);
+  const measurement = useMemo(() => measureBest(patch, answer.positions[nEp - 1]), [patch, answer, nEp]);
+  const catalogue = useCatalogue(patch, true);
+  const verdict = useMemo(() => checkCatalogue(patch, measurement, catalogue.sources), [patch, measurement, catalogue.sources]);
+  const markLine = gaveUp ? t('rev.mark.gaveUp') : hit ? t('rev.mark.hit') : mark ? t('rev.mark.off') : t('rev.mark.none');
+  const callLine = chips.length ? chips.map((c: Chip) => t(`chip.${c}`)).join(', ') : t('rev.call.none');
 
   return (
     <main className="page">
-      <section className="reveal" aria-label="Result">
-        <div className="reveal-text">
-          <span className={`badge ${copy.cls}`}>{copy.badge}</span>
-          <h1 className="reveal-title">{copy.title}</h1>
-          <p className="reveal-fact">{KNOWN[caseDef.id].fact}</p>
-          <dl className="reveal-lines">
-            <dt>Your mark</dt><dd>{markLine}</dd>
-            <dt>Your call</dt><dd>{callLine}</dd>
-            <dt>What’s known</dt><dd>{answer.truth}</dd>
+      <section className="reveal" aria-label={t('rev.result')}>
+        <div className="reveal-text card">
+          <span className={`tag tag-${copy.cls}`}>{copy.badge}</span>
+          <h1 className="t-heading">{copy.title}</h1>
+          <p className="t-body c-2">{KNOWN[caseDef.id].fact}</p>
+          <dl className="facts">
+            <dt>{t('rev.yourMark')}</dt><dd>{markLine}</dd>
+            <dt>{t('rev.yourCall')}</dt><dd>{callLine}</dd>
+            <dt>{t('rev.known')}</dt><dd>{truthText(answer)}</dd>
           </dl>
           <div className="reveal-token">
-            <svg width="54" height="54" viewBox="0 0 54 54" aria-hidden="true">
-              <circle cx="27" cy="27" r="24" fill={caseDef.color} />
-              <circle cx="27" cy="27" r="17" fill="none" stroke="#16133F" strokeWidth="2" strokeDasharray="3 3" />
-              <text x="27" y="34" textAnchor="middle" fontFamily="Bricolage Grotesque, sans-serif" fontSize="20" fontWeight="700" fill="#16133F">{caseDef.n}</text>
-            </svg>
-            <span><strong>{copy.token}</strong><span>{copy.sub}</span></span>
+            <span className="token" style={{ background: caseDef.color }} aria-hidden="true">{caseDef.n}</span>
+            <span><strong>{copy.token}</strong><span className="t-caption c-3">{copy.sub}</span></span>
           </div>
-          <div className="reveal-actions">
+          <div className="row wrap">
             <button type="button" className="btn btn-primary btn-lg" onClick={onNext}>{nextLabel}</button>
-            <button type="button" className="btn btn-paper" onClick={onRetry}>Try again for practice</button>
+            <button type="button" className="btn" onClick={onRetry}>{t('rev.retry')}</button>
           </div>
         </div>
-        <div className="reveal-crops">
-          <span className="reveal-crops-title">Zoomed in on the answer, photo by photo ({patch.bands[b].label})</span>
+        <div className="reveal-crops card">
+          <h2 className="t-label">{t('rev.zoom', { label: patch.bands[b].label })}</h2>
           <div className="crops">
             {patch.epochs.map((ep, e) => (
               <figure key={ep.index} className="crop-fig">
                 <CropView
                   data={frames[e]}
+                  nodata={patch.nodata?.[e]?.[b]}
                   size={patch.size}
-                  center={answer.positions[1]}
+                  center={answer.positions[mid]}
                   half={5}
                   stretch={stretch}
                   tint={patch.bands[b].tint}
                   truth={answer.positions[e]}
                   mark={mark}
                 />
-                <figcaption>{ep.label}</figcaption>
+                <figcaption className="t-caption c-2">{ep.label}</figcaption>
               </figure>
             ))}
           </div>
-          <span className="reveal-crops-note">Green ring: where the catalog puts the object on each date. Dashed yellow: your mark. Pixels at real size, enlarged.</span>
+          <p className="t-caption c-3">{t('rev.cropNote')}</p>
+          <hr className="div" />
+          <section aria-label={t('rev.measure')}>
+            <h2 className="t-label">{t('rev.measure')}</h2>
+            <MeasureCard patch={patch} measurement={measurement} verdict={verdict} catalogue={catalogue} />
+          </section>
         </div>
       </section>
     </main>
