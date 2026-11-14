@@ -3,6 +3,8 @@
 Backend'den ekip arkadaşlarına gidecek notlar. İletilen maddeyi `[x]` yapın; yanıt gelirse altına yazın.
 Son güncelleme: 14 Kasım 2026.
 
+Ekibe gönderilecek özet doküman: https://claude.ai/artifact/Kisqc232fpfzyH9zkprfVk (bu dosya ayrıntılı teknik listedir).
+
 ## Arayüz (frontend)
 
 - [ ] **Mock sunucu hazır.** `backend/` içinde `uvicorn app.main:app --reload`, ardından http://localhost:8000/docs. Kurulum `backend/README.md`'de.
