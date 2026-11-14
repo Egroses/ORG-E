@@ -11,8 +11,9 @@ Update this file as work progresses (`[x]` when done).
 ## Saturday, first hour
 
 - [ ] Create repo, folders (`backend/ pipeline/ imaging/ frontend/`), `LICENSE`, `.gitignore`, README stub
-- [ ] API contract as Pydantic models (incl. `data_release`, `display_range`); get team approval
-- [ ] Mock server (FastAPI): fixed JSON + 3 Barnard PNGs (shared min/max), `mock-running`, `mock-error`; hand to frontend owner
+- [x] API contract as Pydantic models (incl. `data_release`, `display_range`, proposed `grid`, `mjd_mean`) → `backend/app/models.py`; **team approval pending**
+- [x] Mock server (FastAPI): fixed JSON + 3 PNGs (shared min/max), `mock-running`, `mock-error`, tests pass. PNGs are synthetic; replace with real Barnard frames
+- [ ] Hand mock to frontend owner
 
 ## Saturday evening
 
