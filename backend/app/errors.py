@@ -10,6 +10,7 @@ HTTP_STATUS = {
     "not_found": 404,
     "no_coverage": 404,
     "archive_unavailable": 503,
+    "internal_error": 500,
 }
 
 

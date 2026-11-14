@@ -22,17 +22,14 @@ def test_resolve():
     assert abs(body["current"]["dec"] - 4.768) < 0.01
 
 
-def test_create_and_get_job():
-    r = client.post("/api/jobs", json={"ra": 269.446, "dec": 4.768})
+def test_mock_job():
+    r = client.get("/api/jobs/mock")
     assert r.status_code == 200
     job = r.json()
     assert job["status"] == "done"
     assert len(job["frames"]) == 3
     assert job["data_release"] and job["display_range"]["stretch"] == "asinh"
     assert job["grid"]["width"] == 117
-
-    r = client.get(f"/api/jobs/{job['id']}")
-    assert r.json() == job
 
 
 def test_frame_png():

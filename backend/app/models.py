@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 Mode = Literal["epoch", "shift_add"]
 JobStatus = Literal["queued", "running", "done", "failed"]
-ErrorCode = Literal["bad_input", "not_found", "no_coverage", "archive_unavailable"]
+ErrorCode = Literal["bad_input", "not_found", "no_coverage", "archive_unavailable", "internal_error"]
 
 
 class ErrorDetail(BaseModel):

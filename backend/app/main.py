@@ -8,8 +8,12 @@ from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import RedirectResponse  # noqa: E402
 
-from . import api, mock  # noqa: E402
+import logging  # noqa: E402
+
+from . import api, jobs, mock  # noqa: E402
 from .errors import install_error_handlers  # noqa: E402
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 app = FastAPI(title="SPHEREx Blink API", version="0.1.0")
 
@@ -22,6 +26,7 @@ app.add_middleware(
 
 install_error_handlers(app)
 app.include_router(api.router)
+app.include_router(jobs.router)
 app.include_router(mock.router)
 
 
@@ -32,5 +37,5 @@ def root():
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "real": ["targets", "resolve"], "mock": ["jobs", "frames", "diff",
-                                                                   "spectrum", "lightcurve", "gaia"]}
+    return {"status": "ok", "real": ["targets", "resolve", "jobs", "frames", "diff"],
+            "mock": ["spectrum", "lightcurve", "gaia"]}

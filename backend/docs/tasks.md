@@ -19,8 +19,9 @@ Update this file as work progresses (`[x]` when done).
 
 - [x] Coordinate parsing + `GET /api/resolve` (coordinates → 5-target table → SIMBAD Harvard → CDS). CDS main server still 404 on 14 Nov
 - [x] Hard-coded table of the 5 test targets with 2026.0 positions + proper motions (SIMBAD values, propagation checked against `pipeline/targets.json`)
-- [ ] Job model: `POST /api/jobs`, `GET /api/jobs/{id}`, frame serving; job id = hash(rounded ra/dec, fov, detector, mode, pm, data_release)
-- [ ] Wire `pipeline.get_cutouts` and `imaging.make_frames` behind the job
+- [x] Job model: `POST /api/jobs`, `GET /api/jobs/{id}`, frame serving, `/api/diff`; job id = hash(rounded ra/dec, fov, detector, mode, pm). `data_release` reported, not in the id (see team-notes)
+- [x] Wire `pipeline.get_cutouts` behind the job (cached units read from manifest without archive query)
+- [ ] Wire `imaging.make_frames` (backend fallback `app/frames.py` used until then)
 
 ## Saturday night
 
@@ -29,7 +30,7 @@ Update this file as work progresses (`[x]` when done).
 
 ## Sunday morning
 
-- [ ] `shift_add` mode and `GET /api/diff`
+- [ ] `shift_add` mode and `GET /api/diff` (implemented in fallback frame maker; verify on WISE 0855 / Barnard)
 - [ ] Error cases with clear messages (`bad_input`, `not_found`, `no_coverage`, `archive_unavailable`)
 - [ ] Pre-generate and store frames for all 5 targets
 

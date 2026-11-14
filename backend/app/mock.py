@@ -1,5 +1,6 @@
-"""Mock API for jobs, frames and analysis: fixed responses in the real format,
-returned regardless of parameters (targets and resolve are real, see api.py).
+"""Mock data: the mock / mock-running / mock-error jobs (served through jobs.py) and the
+analysis endpoints (spectrum, lightcurve, gaia), which return fixed responses in the real
+format regardless of parameters until the real code is written.
 
 Lets the frontend work before the pipeline and imaging code are wired in.
 The PNGs in mock_data/ are synthetic (see scripts/make_mock_pngs.py).
@@ -12,8 +13,8 @@ from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
 from .errors import ApiError
-from .models import (DisplayRange, Frame, GaiaSource, Grid, Job, JobRequest, Progress,
-                     SkyPosition, SpectrumPoint)
+from .models import (DisplayRange, Frame, GaiaSource, Grid, Job, Progress, SkyPosition,
+                     SpectrumPoint)
 from .targets import TARGETS
 
 MOCK_DATA = Path(__file__).resolve().parents[1] / "mock_data"
@@ -79,13 +80,9 @@ def mock_running_job() -> Job:
 router = APIRouter(prefix="/api")
 
 
-@router.post("/jobs", response_model=Job)
-def create_job(request: JobRequest):
-    return mock_job()
+# The real job routes (jobs.py) hand the ids mock / mock-running / mock-error to these.
 
-
-@router.get("/jobs/{job_id}", response_model=Job)
-def get_job(job_id: str):
+def get_mock_job(job_id: str) -> Job:
     if job_id == "mock-running":
         return mock_running_job()
     if job_id == "mock-error":
@@ -93,15 +90,13 @@ def get_job(job_id: str):
     return mock_job(job_id)
 
 
-@router.get("/frames/{job_id}/{n}.png")
-def get_frame(job_id: str, n: int):
+def frame_file(n: int) -> FileResponse:
     if not 0 <= n < len(MOCK_EPOCHS):
         raise ApiError("not_found", f"Frame {n} does not exist.")
     return FileResponse(MOCK_DATA / f"frame_{n}.png", media_type="image/png")
 
 
-@router.get("/diff")
-def get_diff(job: str, a: int = 0, b: int = len(MOCK_EPOCHS) - 1):
+def diff_file() -> FileResponse:
     return FileResponse(MOCK_DATA / "diff.png", media_type="image/png")
 
 

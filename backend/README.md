@@ -3,9 +3,18 @@
 FastAPI service between the data pipeline / imaging modules and the React frontend.
 The API contract is in `app/models.py` (source: `docs/design-v2.md`).
 
-**Current state:** `targets` and `resolve` are real. Jobs, frames, diff, spectrum,
+**Current state:** `targets`, `resolve`, jobs, frames and diff are real. Spectrum,
 lightcurve and gaia are still **mock**: they return fixed responses in the real format,
 regardless of parameters, so the frontend can be built before the real code is wired in.
+
+Jobs get cutouts from the pipeline (`pipeline/`, cache in `cache/` at the repo root). A unit
+already in the cache is read from its `manifest.csv` without querying the archive. Frames are
+built by `app/frames.py` (a simplified version of the imaging design, used until the imaging
+module is wired in) and stored in `data/jobs/<id>/` (`BACKEND_DATA_DIR` to change).
+Finished jobs are reloaded from disk at startup.
+
+Pre-generate frames for the test targets from the local cache:
+`python -m scripts.prebuild` (options: `--target barnard --detector 6`, `--refresh`).
 
 `resolve` accepts degrees (`269.452 4.693`), sexagesimal (`17h57m48.5s +04d41m36s`,
 `17:57:48.5 +04:41:36`, `17 57 48.5 +04 41 36`) or a name. The five test targets are answered
@@ -52,7 +61,8 @@ Mock job ids for frontend states: `mock` (done, 3 frames), `mock-running` (1 fra
 `mock-error` (`no_coverage` error).
 
 Errors: HTTP status + `{"error": {"code": "...", "message": "..."}}` with codes
-`bad_input` (400), `not_found` (404), `no_coverage` (404), `archive_unavailable` (503).
+`bad_input` (400), `not_found` (404), `no_coverage` (404), `archive_unavailable` (503),
+`internal_error` (500). A failed job is still returned with HTTP 200, its reason in `error`.
 
 ## AI assistance
 
