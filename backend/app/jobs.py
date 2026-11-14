@@ -67,16 +67,33 @@ def _records_from_manifest(directory: Path):
     ]
 
 
-def find_cutouts(req: JobRequest, on_progress):
+LIVE_OFF_MESSAGE = ("Live archive queries are turned off on this server. "
+                    "The sample targets still work.")
+
+
+def cutout_dir(req: JobRequest) -> Path:
+    from pipeline.cutouts import _directory  # imported late: heavy, network setup
+    return _directory(req.ra, req.dec, req.fov, req.detector)
+
+
+def is_cached(req: JobRequest) -> bool:
+    """True when the cutouts for this request are already in the pipeline cache."""
+    return (cutout_dir(req) / "manifest.csv").exists()
+
+
+def find_cutouts(req: JobRequest, on_progress, live: bool = True):
     """Cutout records for the request and the number of failed downloads.
 
     A unit that already has a manifest is read straight from the cache: no archive query,
-    so cached targets open fast and keep working when IRSA is down.
+    so cached targets open fast and keep working when IRSA is down. Anything else is
+    downloaded through the pipeline, unless live queries are off.
     """
-    from pipeline.cutouts import _directory, get_cutouts  # imported late: heavy, network setup
+    from pipeline.cutouts import get_cutouts
 
-    directory = _directory(req.ra, req.dec, req.fov, req.detector)
+    directory = cutout_dir(req)
     if not (directory / "manifest.csv").exists():
+        if not live:
+            raise ApiError("archive_unavailable", LIVE_OFF_MESSAGE)
         get_cutouts(req.ra, req.dec, req.fov, req.detector, on_progress=on_progress)
     records = _records_from_manifest(directory)
     failed_file = directory / "failed.txt"
@@ -92,8 +109,9 @@ def data_release(records) -> str:
 # ---------- job manager ----------
 
 class JobManager:
-    def __init__(self, jobs_dir: Path, max_running: int):
+    def __init__(self, jobs_dir: Path, max_running: int, live: bool = True):
         self.jobs_dir = jobs_dir
+        self.live = live  # False: only cached positions, never the archive
         self.jobs: dict = {}
         self.lock = threading.Lock()
         self.pool = ThreadPoolExecutor(max_running, thread_name_prefix="job")
@@ -114,6 +132,12 @@ class JobManager:
         job_id = job_id_for(req)
         with self.lock:
             job = self.jobs.get(job_id)
+            if job is not None and job.status != "failed":
+                return job.model_copy(deep=True)
+        if not self.live and not is_cached(req):
+            raise ApiError("archive_unavailable", LIVE_OFF_MESSAGE)
+        with self.lock:
+            job = self.jobs.get(job_id)  # another request may have started it meanwhile
             if job is not None and job.status != "failed":
                 return job.model_copy(deep=True)
             job = Job(id=job_id, status="queued", progress=Progress(total=0, done=0, failed=0),
@@ -147,7 +171,9 @@ class JobManager:
             self._update(job_id, progress=Progress(total=total, done=done, failed=failed))
 
         try:
-            records, failed = find_cutouts(req, on_progress)
+            records, failed = find_cutouts(req, on_progress, self.live)
+        except ApiError as exc:
+            return self._fail(job_id, exc.code, exc.message)
         except Exception as exc:  # archive errors come in many types (HTTP, DAL, timeouts)
             log.exception("cutout search failed for job %s", job_id)
             return self._fail(job_id, "archive_unavailable", f"The SPHEREx archive did not answer: {exc}")
@@ -178,7 +204,7 @@ class JobManager:
         log.info("job %s done: %d frames", job_id, len(frames))
 
 
-manager = JobManager(config.JOBS_DIR, config.MAX_RUNNING_JOBS)
+manager = JobManager(config.JOBS_DIR, config.MAX_RUNNING_JOBS, live=config.LIVE_QUERIES)
 
 
 # ---------- HTTP ----------

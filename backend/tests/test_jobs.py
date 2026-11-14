@@ -38,19 +38,35 @@ def test_job_id_stable_and_ignores_pm_in_epoch_mode():
 
 
 def test_no_coverage(tmp_path, monkeypatch):
-    monkeypatch.setattr(jobs, "find_cutouts", lambda req, cb: ([], 0))
+    monkeypatch.setattr(jobs, "find_cutouts", lambda req, cb, live: ([], 0))
     manager = JobManager(tmp_path, 1)
     job = wait(manager, manager.submit(JobRequest(ra=1, dec=2)).id)
     assert job.status == "failed" and job.error.code == "no_coverage"
 
 
 def test_archive_down(tmp_path, monkeypatch):
-    def down(req, cb):
+    def down(req, cb, live):
         raise ConnectionError("503")
     monkeypatch.setattr(jobs, "find_cutouts", down)
     manager = JobManager(tmp_path, 1)
     job = wait(manager, manager.submit(JobRequest(ra=1, dec=2)).id)
     assert job.status == "failed" and job.error.code == "archive_unavailable"
+
+
+def test_live_off_refuses_uncached_at_once(tmp_path, monkeypatch):
+    monkeypatch.setattr(jobs, "is_cached", lambda req: False)
+    manager = JobManager(tmp_path, 1, live=False)
+    with pytest.raises(jobs.ApiError) as err:
+        manager.submit(JobRequest(ra=1, dec=2))
+    assert err.value.code == "archive_unavailable"
+
+
+def test_live_off_still_builds_cached(tmp_path, monkeypatch):
+    monkeypatch.setattr(jobs, "is_cached", lambda req: True)
+    monkeypatch.setattr(jobs, "find_cutouts", lambda req, cb, live: ([], 0))
+    manager = JobManager(tmp_path, 1, live=False)
+    job = wait(manager, manager.submit(JobRequest(ra=1, dec=2)).id)
+    assert job.error.code == "no_coverage"  # it ran (no archive refusal)
 
 
 def test_unknown_job_and_bad_ids():

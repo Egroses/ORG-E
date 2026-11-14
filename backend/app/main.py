@@ -46,7 +46,7 @@ app.include_router(jobs.router)
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "frontend": config.FRONTEND_DIST.is_dir(),
+    return {"status": "ok", "frontend": config.FRONTEND_DIST.is_dir(), "live_queries": config.LIVE_QUERIES,
             "real": ["targets", "resolve", "jobs", "frames", "diff", "gaia", "spectrum", "lightcurve"]}
 
 

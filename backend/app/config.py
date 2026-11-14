@@ -20,6 +20,10 @@ FRONTEND_DIST = Path(os.environ.get("FRONTEND_DIST", REPO_ROOT / "frontend" / "d
 # Build frames for the cached test targets in the background when the server starts.
 PREBUILD_ON_START = os.environ.get("PREBUILD_ON_START", "0") == "1"
 
+# 1: positions not in the cache are downloaded from IRSA (2-5 min). 0: only cached positions
+# (the test targets) open; anything else answers archive_unavailable at once.
+LIVE_QUERIES = os.environ.get("LIVE_QUERIES", "1") == "1"
+
 # Center epoch of the frames (decimal year); positions from /api/resolve use the same.
 CENTER_EPOCH = 2026.0
 

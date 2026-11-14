@@ -32,9 +32,10 @@ Update this file as work progresses (`[x]` when done).
 ## Sunday morning
 
 - [x] `shift_add` mode and `GET /api/diff`. Verified on WISE 0855 D6 (45 cutouts): moving stack 17 sigma exactly at centre, fixed stack 11 sigma (offset, smeared), reversed-motion control 6.7 sigma (offset). Barnard diff: white above black (moves north)
-- [ ] Error cases with clear messages (`bad_input`, `not_found`, `no_coverage`, `archive_unavailable`)
+- [x] Error cases with clear messages (`bad_input`, `not_found`, `no_coverage`, `archive_unavailable`, `internal_error`)
 - [ ] Pre-generate and store frames for all 5 targets (script ready; local cache has barnard D6 + wise0855 D6 only)
 - [x] Offline fallback: `scripts/export_static.py` + stand-alone viewer, checked in headless Chrome
+- [x] Static export for embedding in the site (`--frontend`, contract in `docs/static-export.md`) and `LIVE_QUERIES` switch (team decision 14 Nov: embed the five targets, keep live queries for other positions)
 
 ## Sunday afternoon (drop if late)
 
