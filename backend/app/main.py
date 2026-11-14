@@ -11,10 +11,11 @@ from pathlib import Path  # noqa: E402
 
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402
 from fastapi.responses import RedirectResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 
-from . import api, config, jobs  # noqa: E402
+from . import api, config, jobs, patch  # noqa: E402
 from .errors import install_error_handlers  # noqa: E402
 from .prebuild import submit_all  # noqa: E402
 
@@ -22,11 +23,16 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("backend")
 
 
+def _prebuild():
+    submit_all(jobs.manager)
+    patch.submit_all()
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     if config.PREBUILD_ON_START:
-        threading.Thread(target=submit_all, args=(jobs.manager,), daemon=True).start()
-        log.info("queued frame jobs for the cached test targets")
+        threading.Thread(target=_prebuild, daemon=True).start()
+        log.info("queued frame jobs and patches for the cached test targets")
     yield
 
 
@@ -38,16 +44,24 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+# JSON answers (spectra, light curves) shrink about 2x; small answers are left alone.
+# /api/patch sends its stored gzip bytes as they are (the middleware skips encoded answers).
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 install_error_handlers(app)
 app.include_router(api.router)
 app.include_router(jobs.router)
+app.include_router(patch.router)
 
 
 @app.get("/api/health")
 def health():
+    cache = config.REPO_ROOT / "cache"
     return {"status": "ok", "frontend": config.FRONTEND_DIST.is_dir(), "live_queries": config.LIVE_QUERIES,
-            "real": ["targets", "resolve", "jobs", "frames", "diff", "gaia", "spectrum", "lightcurve"]}
+            # pipeline cache units (target x detector) on disk; 30 = all five test targets, six detectors each
+            "cached_units": sum(1 for _ in cache.glob("*/D[1-6]/manifest.csv")),
+            "frame_engine": jobs.frame_engine(), "patch": patch.imaging_available(),
+            "real": ["targets", "resolve", "jobs", "frames", "diff", "gaia", "spectrum", "lightcurve", "patch"]}
 
 
 def mount_frontend(application: FastAPI, dist: Path) -> bool:

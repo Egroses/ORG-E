@@ -32,18 +32,21 @@ def test_bad_position():
 def test_barnard_spectrum():
     params = {"ra": BARNARD.ra, "dec": BARNARD.dec, "pmra": BARNARD.pmra, "pmdec": BARNARD.pmdec}
     points = client.get("/api/spectrum", params=params).json()
-    assert len(points) >= 50 and all(p["detector"] == 6 for p in points)
     waves = [p["wavelength_um"] for p in points]
-    assert waves == sorted(waves) and 4.3 < waves[0] and waves[-1] < 5.1
-    assert min(p["flux_mjy"] for p in points) > 1000  # a few Jy at 4.5 micron
-    assert all(p["flagged"] for p in points)  # saturated core
+    assert waves == sorted(waves) and 0.7 < waves[0] and waves[-1] < 5.1
+    d6 = [p for p in points if p["detector"] == 6]  # cached for every setup of the cache
+    assert len(d6) >= 50 and all(4.3 < p["wavelength_um"] < 5.1 for p in d6)
+    assert min(p["flux_mjy"] for p in d6) > 1000  # a few Jy at 4.5 micron
+    assert all(p["flagged"] for p in d6)  # saturated core
 
 
 @needs_cache
 def test_moving_star_is_lost_without_proper_motion():
-    # at its Gaia 2016.0 position Barnard's Star is gone: ~10 arcsec away by 2025-26
+    # at its Gaia 2016.0 position Barnard's Star is gone: ~100 arcsec away by 2025-26.
+    # Single flagged exposures can still show artefacts, so only unflagged points count.
     points = client.get("/api/spectrum", params={"ra": 269.4485025, "dec": 4.7394201}).json()
-    assert max(abs(p["flux_mjy"]) for p in points) < 100
+    clean = [abs(p["flux_mjy"]) for p in points if not p["flagged"]]
+    assert len(clean) >= 20 and max(clean) < 100
 
 
 @needs_cache
