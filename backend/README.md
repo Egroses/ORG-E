@@ -73,6 +73,7 @@ viewer (`index.html`), so it works on any static host as an offline fallback.
 `LIVE_QUERIES=0` turns archive downloads off: cached positions (the test targets) still open,
 any other position answers `archive_unavailable` at once. Default `1` (positions not in the
 cache are downloaded, 2-5 min). `GET /api/health` reports the setting as `live_queries`.
+The public demo runs with `LIVE_QUERIES=0` (`render.yaml`, team decision 14 Nov).
 
 ## Endpoints
 

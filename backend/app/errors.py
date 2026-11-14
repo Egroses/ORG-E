@@ -1,5 +1,7 @@
 """Error format: {"error": {"code": ..., "message": ...}} with a matching HTTP status."""
 
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -36,6 +38,13 @@ def install_error_handlers(app: FastAPI) -> None:
         where = ".".join(str(part) for part in first.get("loc", []) if part != "body")
         message = f"{where}: {first.get('msg', 'invalid input')}" if where else first.get("msg", "invalid input")
         return JSONResponse(error_body("bad_input", message), status_code=400)
+
+    @app.exception_handler(Exception)
+    async def _unexpected(_: Request, exc: Exception):
+        # e.g. a NaN reaching a JSON answer (Starlette writes JSON with allow_nan=False)
+        logging.getLogger("backend").exception("unhandled error")
+        return JSONResponse(error_body("internal_error", f"Unexpected server error: {type(exc).__name__}"),
+                            status_code=500)
 
     @app.exception_handler(StarletteHTTPException)
     async def _http_error(_: Request, exc: StarletteHTTPException):

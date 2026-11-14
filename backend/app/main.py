@@ -11,6 +11,7 @@ from pathlib import Path  # noqa: E402
 
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402
 from fastapi.responses import RedirectResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 
@@ -38,6 +39,8 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+# JSON answers (spectra, the coming /api/patch float32 stacks) shrink about 2x; small answers are left alone.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 install_error_handlers(app)
 app.include_router(api.router)

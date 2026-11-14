@@ -224,5 +224,5 @@ def make_frames(records, ra, dec, fov_deg, mode, pmra, pmdec, center_epoch, out_
         "frames": frames,
         "n_unreadable": len(records) - len(loaded),
     }
-    (out_dir / "frames.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
+    (out_dir / "frames.json").write_text(json.dumps(result, indent=1, allow_nan=False), encoding="utf-8")
     return result

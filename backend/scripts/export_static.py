@@ -41,7 +41,7 @@ FRONTEND_STATIC = config.REPO_ROOT / "frontend" / "public" / "static"
 
 def write_json(path: Path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=1), encoding="utf-8")
+    path.write_text(json.dumps(data, indent=1, allow_nan=False), encoding="utf-8")
 
 
 def export_job(job, out: Path):

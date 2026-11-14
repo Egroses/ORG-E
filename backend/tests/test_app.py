@@ -33,3 +33,26 @@ def test_prebuild_requests_only_cached():
         assert req.fov == 0.1 and 1 <= req.detector <= 6
         if req.mode == "shift_add":
             assert key == "wise0855" and req.pmra is not None
+
+
+def test_large_json_is_gzipped():
+    # the target list is small; the error body too: only answers over 1000 bytes are compressed
+    client = TestClient(app)
+    r = client.get("/openapi.json", headers={"Accept-Encoding": "gzip"})
+    assert r.headers.get("content-encoding") == "gzip" and r.json()["openapi"]
+    small = client.get("/api/health", headers={"Accept-Encoding": "gzip"})
+    assert "content-encoding" not in small.headers
+
+
+def test_nan_becomes_internal_error_json():
+    from app.errors import install_error_handlers
+
+    test_app = FastAPI()
+    install_error_handlers(test_app)
+
+    @test_app.get("/nan")
+    def nan():
+        return {"noise": float("nan")}
+
+    r = TestClient(test_app, raise_server_exceptions=False).get("/nan")
+    assert r.status_code == 500 and r.json()["error"]["code"] == "internal_error"
