@@ -7,6 +7,7 @@ Ekibe gönderilecek özet doküman: https://claude.ai/artifact/Kisqc232fpfzyH9zk
 
 ## Arayüz (frontend)
 
+- [ ] **R Draconis artık 8 kare (önceden 5).** Sürekli gözlendiği için 10 günlük boşluk kuralı Şubat–Mayıs 2026'yı tek kareye (475 görüntü) topluyordu. `app/frames.py` artık bir dönemi en fazla 30 günde kesiyor (`docs/patch-api.md`'deki `max_span_days=30` ile aynı). Sözleşme değişmedi; diğer hedeflerin kareleri aynı.
 - [ ] **Entegrasyon rehberi hazır:** https://claude.ai/artifact/R5H7kYirH6xdJ4ADwdxpAA (her uç nokta, örnek yanıtlar, hata kodları, TypeScript istemcisi, statik dosyalar). Frontend sahibiyle paylaşılmalı; sonundaki onay listesi yanıt bekliyor.
 - [ ] **`mock-error` ile gerçek başarısız iş farklı:** mock HTTP 404 döner (tasarımdaki gibi), gerçek iş ise 200 + `status: "failed"` + `error`. Frontend ikisini de ele almalı. Onay gelirse mock'u gerçeğe uydururum.
 - [ ] **Mock sunucu hazır.** `backend/` içinde `uvicorn app.main:app --reload`, ardından http://localhost:8000/docs. Kurulum `backend/README.md`'de.

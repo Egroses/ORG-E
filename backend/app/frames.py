@@ -18,7 +18,8 @@ from astropy.wcs import WCS, FITSFixedWarning
 from PIL import Image
 
 SCALE_ARCSEC = 3.075
-GAP_DAYS = 10.0
+GAP_DAYS = 10.0       # an epoch ends after a gap longer than this
+MAX_SPAN_DAYS = 30.0  # ... or once it is this long (same defaults as docs/patch-api.md)
 
 BAD_BITS = {"TRANSIENT", "NONFUNC", "MISSING_DATA", "HOT", "COLD", "PHANMISS", "PERSIST",
             "OUTLIER", "STREAK", "SNOWBALL"}
@@ -99,10 +100,17 @@ def resample(image, wcs, ra, dec):
 
 # ---------- grouping, stacking, PNG ----------
 
-def group_by_epoch(records, gap_days=GAP_DAYS):
+def group_by_epoch(records, gap_days=GAP_DAYS, max_span_days=MAX_SPAN_DAYS):
+    """Split exposures into observing epochs.
+
+    An epoch ends after a gap longer than gap_days, and is also cut once it spans max_span_days:
+    near the ecliptic poles (R Draconis) coverage is continuous, so gaps alone would merge
+    months of a variable star into one frame.
+    """
     groups = []
     for record in sorted(records, key=lambda r: r["mjd"]):
-        if groups and record["mjd"] - groups[-1][-1]["mjd"] <= gap_days:
+        if (groups and record["mjd"] - groups[-1][-1]["mjd"] <= gap_days
+                and record["mjd"] - groups[-1][0]["mjd"] <= max_span_days):
             groups[-1].append(record)
         else:
             groups.append([record])
