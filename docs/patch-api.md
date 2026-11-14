@@ -28,6 +28,26 @@ flags). The PNG frames of `/api/jobs` are 8-bit and stretched, so they cannot be
 
 The same parameters always give the same job (the backend derives the job id from them).
 
+**Cached targets and coordinates.** A request within 10 arcseconds of one of the five cached targets
+(`pipeline/targets.json`, positions at epoch 2026.0) is served from that target's cache; the backend must snap like this,
+because a field centred even one arcsecond away would otherwise miss the cache (the frontend sends the exact
+`targets.json` numbers, the reference dev server snaps within 3.6 arcsec).
+
+**Live queries (coordinates that are not cached) are slow.** The backend developer estimates about 4-5 minutes per detector
+(an estimate from download speed, not measured by us), so `dets=2,4,6` would take about 13 minutes and `dets=1,...,6` about
+25 minutes. For such requests the server may accept only ONE detector and answer `400 bad_input` otherwise, or live queries may
+be switched off altogether (`LIVE_QUERIES=0`, recommended for the demo).
+
+**Epoch settings used by the frontend** (measured on the cached data, detectors 2,4,6):
+
+| Target | `gap_days` / `max_span_days` | Visits | Result |
+| --- | --- | --- | --- |
+| Barnard's Star, WISE 0855, RW Aurigae | 30 / 60 | 3 | all three bands in every visit |
+| Epsilon Indi B | 30 / 60 | 4 | one band missing in the last visit |
+| R Draconis | 60 / 150 | 4 | three visits with all bands, the fourth only D4 (the pulsation period is 245 days, so a 5-month visit smooths its variation) |
+| any of them with the defaults 10 / 30 | | 7 to 16 | many visits with one or two bands only, or a single exposure |
+
+
 ## Response
 
 The request is idempotent and meant to be polled every ~2 s.
@@ -35,7 +55,8 @@ The request is idempotent and meant to be polled every ~2 s.
 * `202` while the patch is being built: `{"status": "queued" | "running", "id": "...", "progress": {"total": 58, "done": 31, "failed": 0}}`
 * `200` when done: the full object below, `"status": "done"`.
 * `200` with `"status": "failed"` and `"error": {"code": "no_coverage" | "archive_unavailable" | "internal_error", "message": "..."}`
-  (same codes as the rest of the API).
+  (same codes as the rest of the API). Invalid parameters, or too many detectors for a live query: HTTP 400 with
+  `{"status": "failed", "error": {"code": "bad_input", "message": "..."}}`.
 
 Cached targets (the five test targets) answer `200` immediately.
 
@@ -95,9 +116,22 @@ Cached targets (the five test targets) answer `200` immediately.
 3. **Masked pixels** are `NaN` in `data` (JSON carries them inside the base64, which is fine for float32).
    Saturated star cores are **not** masked (see `docs/wdd-goruntu-isleme.md`, section 3 rule 6).
 4. **Epochs are shared by all returned detectors**: the epoch list is built once from the exposures of all requested detectors.
-5. **Size.** 117 x 117 x 4 bytes = 55 kB per frame. A 3-band, 5-epoch patch is about 0.8 MB raw, 1.1 MB in base64. The backend
-   should enable gzip for this route.
+5. **Size.** 117 x 117 x 4 bytes = 55 kB per frame. A 3-band, 5-epoch patch is about 0.8 MB raw, 1.1 MB in base64. gzip makes
+   it about **2x smaller** (measured on real Barnard frames: the float pixel data compresses about 1.6x, the flag map much more),
+   so about 0.55 MB on the wire. The backend should enable gzip for this route.
 6. **Version field.** Add `"contract": 1` at the top level when the shape changes; clients must ignore unknown keys.
+7. **No NaN or Infinity in the JSON.** JSON cannot carry them and `JSON.parse` would reject the whole answer. `noise` is `null`
+   when it cannot be measured (for example a frame without empty-sky pixels); clients treat `null` as "unknown". NaN *pixels*
+   are fine: they live inside the base64 bytes.
+8. **`n_images`** keys are strings (`"2"`, `"4"`, `"6"`); a detector with no exposure in that epoch is omitted from the object, and
+   its frame is `null`.
+9. **`flag_share`** counts every flag except FULLSAMPLE and SOURCE (the saturation bits OVERFLOW, SUR_ERROR and BLOOM
+   included), over the exposures that cover the pixel. A saturated star core is therefore flagged, but its pixel values are kept.
+10. **`dates` and `label`.** `dates` uses an en dash: `15 Aug – 1 Oct 2025`. `label` is `Mon YYYY`; the day is added when
+    two epochs fall in the same month.
+11. **`data_release`** is an object here (`collections`, `latest_mjd`), whereas `/api/jobs` returns text: deliberate, the routes
+    are separate. `latest_mjd` is `null` when nothing was loaded.
+12. **Field larger than the cached cutouts.** The cached cutouts are 0.1 degree wide, so `fov` above 0.1 has NaN edges.
 
 ## Python side (`imaging`)
 

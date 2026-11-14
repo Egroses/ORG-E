@@ -16,7 +16,18 @@ ayrı bir uçtan sunulacak. Mevcut uçlar (`/api/jobs`, `/api/frames`, `/api/dif
       (202 çalışırken, 200 bitince), yönelim (satır 0 = kuzey, sütun 0 = doğu), `flag_share`, `noise`, `data_release` senin
       işine uyuyor mu? Değiştirmek istediğin her şeyi **kodlamadan önce** yaz; sözleşme arayüz ve imaging ile ortak,
       sessizce değiştirilmemeli.
-- [ ] Yanıt boyutu: 3 bant × 5 dönem yaklaşık 1,1 MB (base64). `GZipMiddleware` ekle (JSON için yaklaşık 3–4 kat küçülür).
+- [ ] Yanıt boyutu: 3 bant × 5 dönem yaklaşık 1,1 MB (base64). `GZipMiddleware` ekle. Gerçek Barnard kareleriyle ölçüldü: yaklaşık **2 kat** küçülür, yani 1,1 MB yanıt ağda yaklaşık 0,55 MB olur (piksel verisi 1,6 kat, bayrak haritası çok daha fazla sıkışır).
+
+### 0b. Karar gerektirenler (proje sahibiyle)
+- [ ] **Canlı sorgu politikası.** Yeni bir koordinat için tek dedektör yaklaşık 4–5 dk sürüyor (senin tahminin; bizde ölçülmedi),
+      `dets=2,4,6` yaklaşık 13 dk, keşif modunda `1..6` yaklaşık 25 dk. Öneri: **demo için `LIVE_QUERIES=0`**. Açıksa canlı
+      sorguda en fazla **tek dedektör** kabul et, fazlasında `400 bad_input` ve anlaşılır mesaj dön (sözleşmede yazıyor).
+- [ ] **Hedefe yakalama (snap).** İstek, önbellekteki beş hedeften birine 10 yay saniyesi içindeyse o hedefin önbelleğiyle
+      sunulmalı. `pipeline.cutouts._directory` yalnızca 0,002 yay saniyesi içini tanıyor; 1 yay saniyelik fark önbelleği kaçırır.
+      (Arayüz artık `targets.json`'daki tam sayıları gönderiyor, ama yakalama yine de gerekli.)
+- [ ] **`noise`:** ölçülemezse `null` dön, hiçbir yerde NaN/Infinity yazma (`JSON.parse` tüm yanıtı reddeder). `imaging.encode_patch`
+      bunu zaten yapıyor; kendi `json` çıktında `allow_nan=False` kullan ki bir şey kaçarsa hemen anlaşılsın.
+- [ ] **`data_release`:** `/api/patch`'te nesne (`collections`, `latest_mjd`), `/api/jobs`'ta metin. Ayrı uçlar, sorun değil; bilinçli bir karar olarak kalsın.
 
 ### 1. imaging'i bağla (onaydan sonra)
 - [ ] `backend/app/jobs.py`: `frames.make_frames` yerine `imaging.make_frames` (imza ve çıktılar aynı: `n.png`,
@@ -34,6 +45,9 @@ ayrı bir uçtan sunulacak. Mevcut uçlar (`/api/jobs`, `/api/frames`, `/api/dif
       kaybolmasın.
 - [ ] Çalışırken **202** ve `progress` (`total`, `done`, `failed`); bitince 200. Hatalar mevcut kodlarla:
       `no_coverage`, `archive_unavailable`, `internal_error` (200 + `status: "failed"`).
+- [ ] **R Draconis dönemleri:** sürekli gözlendiği için 10 günlük boşluk kuralı tek dev dönem üretiyor. `/api/jobs` (frames.py)
+      bu kuralı bilmiyor; imaging bağlanınca `max_span_days=30` ile düzelir. Bağlanmazsa frames.py'ye bir üst süre sınırı ekle.
+      Arayüz oyun için ayrıca `gap_days=60 & max_span_days=150` istiyor (R Draconis için dört dönem, üçünde üç bant).
 - [ ] Açılışta (`PREBUILD_ON_START`) beş hedef için `dets=2,4,6` (oyun) ve `dets=1,2,3,4,5,6` (keşif) yamalarını önceden üret.
 
 ### 3. Deep koleksiyonlar
@@ -51,6 +65,11 @@ ayrı bir uçtan sunulacak. Mevcut uçlar (`/api/jobs`, `/api/frames`, `/api/dif
       `LIVE_QUERIES=0`** öneriyorum (karar proje sahibinde).
 - [ ] `/api/health`: önbellekte kaç birim olduğunu da döndür (30 olmalı). Sunucuda önbellek eksikse hemen anlaşılır.
 - [ ] Açtıktan sonra duman testi: Barnard's Star için `GET /api/patch?ra=269.446271&dec=4.768197&dets=2,4,6` 200 dönmeli.
+
+- [ ] **Zip'in adresi.** `cache_all.zip` sunucuda açılmalı ama dosyanın nerede durduğu henüz belli değil (karar proje sahibinde):
+      GitHub Release (depo herkese açılınca), Google Drive bağlantısı ya da başka bir yer. Adres gelmeden bu madde yapılamaz.
+      Drive kullanılırsa indirme: `curl -L "https://drive.usercontent.google.com/download?id=<ID>&export=download&confirm=t" -o cache_all.zip`,
+      ardından SHA-256 kontrolü. Aynı yöntem B'nin 78 MB'lık zip'iyle çalıştı; 180 MB için ayrıca denenecek.
 
 ### 5. Testler
 - [ ] Sözleşme testi: base64 çöz, boyutlar `size*size`, `noise > 0`, bayrak haritası uint8; **yönelim**: Barnard D6'da
