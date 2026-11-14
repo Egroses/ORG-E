@@ -3,9 +3,8 @@
 FastAPI service between the data pipeline / imaging modules and the React frontend.
 The API contract is in `app/models.py` (source: `docs/design-v2.md`).
 
-**Current state:** `targets`, `resolve`, jobs, frames, diff and gaia are real. Spectrum and
-lightcurve are still **mock**: they return fixed responses in the real format,
-regardless of parameters, so the frontend can be built before the real code is wired in.
+**Current state:** every endpoint is real. The ids `mock`, `mock-running` and `mock-error`
+still return fixed jobs so the frontend can test its loading and error screens.
 
 Jobs get cutouts from the pipeline (`pipeline/`, cache in `cache/` at the repo root). A unit
 already in the cache is read from its `manifest.csv` without querying the archive. Frames are
@@ -78,6 +77,21 @@ Mock job ids for frontend states: `mock` (done, 3 frames), `mock-running` (1 fra
 Errors: HTTP status + `{"error": {"code": "...", "message": "..."}}` with codes
 `bad_input` (400), `not_found` (404), `no_coverage` (404), `archive_unavailable` (503),
 `internal_error` (500). A failed job is still returned with HTTP 200, its reason in `error`.
+
+## Spectrum and light curve
+
+`/api/spectrum` and `/api/lightcurve` measure the cached cutouts (no archive request; open a
+position's frames first). Each SPHEREx exposure sees a point of the sky at a different
+wavelength, so every cutout gives one point: flux in a 2-pixel (12.3") aperture minus the median
+of a 4-7 pixel annulus, error from the `VARIANCE` layer, wavelength from `WCS-WAVE` at the source
+pixel. With `pmra`/`pmdec` the aperture follows a moving source to each exposure's date.
+Points with a flagged pixel in the aperture (e.g. a saturated core) carry `flagged: true`.
+
+Approximation: surface brightness (MJy/sr) is converted to flux with the nominal pixel area
+(6.15" x 6.15"). The true pixel solid angle varies across the detector; the official solid-angle
+pixel map (`nasa-irsa-spherex/dr1/solid_angle_pixel_map/`) would make the fluxes more exact.
+Aperture losses are not corrected, so fluxes of point sources are underestimated by a constant
+factor per detector; spectra shapes and light curves are unaffected.
 
 ## AI assistance
 

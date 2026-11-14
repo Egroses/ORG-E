@@ -37,9 +37,10 @@ Update this file as work progresses (`[x]` when done).
 
 ## Sunday afternoon (drop if late)
 
-- [ ] `GET /api/spectrum`
-- [ ] `GET /api/lightcurve` (R Draconis)
-- [ ] `GET /api/gaia` (only if frontend doesn't use Aladin's Gaia layer)
+- [x] `GET /api/spectrum` (aperture photometry on cached cutouts, follows proper motion; checked on Barnard D6)
+- [x] `GET /api/lightcurve` (same measurement, one detector, optional wavelength band; R Draconis needs its cache)
+- [x] `GET /api/gaia` (Gaia DR3 ESA TAP, propagated to 2026.0)
+- [x] Mock job uses real Barnard D6 frames
 
 ## Sunday 18:00 code freeze
 

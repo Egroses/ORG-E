@@ -63,7 +63,6 @@ def test_bad_input():
     assert r.json()["error"]["code"] == "bad_input"
 
 
-def test_diff_and_analysis():
-    assert client.get("/api/diff", params={"job": "mock", "a": 0, "b": 2}).status_code == 200
-    assert len(client.get("/api/spectrum", params={"ra": 1, "dec": 2}).json()) == 102
-    assert client.get("/api/lightcurve", params={"ra": 1, "dec": 2}).status_code == 200
+def test_mock_diff():
+    r = client.get("/api/diff", params={"job": "mock", "a": 0, "b": 2})
+    assert r.status_code == 200 and r.headers["content-type"] == "image/png"

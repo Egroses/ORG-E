@@ -1,21 +1,16 @@
-"""Mock data: the mock / mock-running / mock-error jobs (served through jobs.py) and the
-analysis endpoints (spectrum, lightcurve), which return fixed responses in the real
-format regardless of parameters until the real code is written.
+"""Mock jobs for frontend states: mock (done), mock-running and mock-error.
 
-Lets the frontend work before the pipeline and imaging code are wired in.
-The PNGs in mock_data/ are real Barnard's Star D6 frames (three full epochs of the real job,
-copied by scripts/make_mock_pngs.py); the metadata below matches them.
+Served through the real job routes in jobs.py. The PNGs in mock_data/ are real Barnard's Star
+D6 frames (three full epochs of the real job, copied by scripts/make_mock_pngs.py); the metadata
+below matches them.
 """
 
-from datetime import date
 from pathlib import Path
 
-from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
 from .errors import ApiError
-from .models import (DisplayRange, Frame, Grid, Job, Progress, SkyPosition,
-                     SpectrumPoint)
+from .models import DisplayRange, Frame, Grid, Job, Progress, SkyPosition
 from .targets import TARGETS
 
 MOCK_DATA = Path(__file__).resolve().parents[1] / "mock_data"
@@ -36,10 +31,6 @@ MOCK_EPOCHS = [
          wavelength_um=[4.434, 4.977], n_images=17, flagged_fraction=0.0042),
 ]
 MOCK_SOURCE_FRAMES = [0, 1, 4]  # frame numbers in the real job that the mock PNGs come from
-
-
-def _mjd(day: str) -> float:
-    return float((date.fromisoformat(day) - date(1858, 11, 17)).days)
 
 
 def mock_frames(job_id: str) -> list:
@@ -70,9 +61,6 @@ def mock_running_job() -> Job:
     return job
 
 
-router = APIRouter(prefix="/api")
-
-
 # The real job routes (jobs.py) hand the ids mock / mock-running / mock-error to these.
 
 def get_mock_job(job_id: str) -> Job:
@@ -91,31 +79,3 @@ def frame_file(n: int) -> FileResponse:
 
 def diff_file() -> FileResponse:
     return FileResponse(MOCK_DATA / "diff.png", media_type="image/png")
-
-
-@router.get("/spectrum", response_model=list[SpectrumPoint])
-def spectrum(ra: float, dec: float):
-    # Smooth made-up spectrum: 17 points per detector, three epochs for D6.
-    points = []
-    bands = [(1, 0.75, 1.09), (2, 1.10, 1.62), (3, 1.63, 2.41), (4, 2.42, 3.82), (5, 3.83, 4.41), (6, 4.42, 5.00)]
-    for detector, lo, hi in bands:
-        for i in range(17):
-            wl = lo + (hi - lo) * i / 16
-            flux = 900.0 * wl ** -1.6
-            points.append(SpectrumPoint(wavelength_um=round(wl, 4), flux_mjy=round(flux, 2),
-                                        err_mjy=round(0.03 * flux + 1.0, 2), mjd=_mjd("2025-09-08"),
-                                        detector=detector, flagged=detector <= 2 and i % 5 == 0))
-    return points
-
-
-@router.get("/lightcurve", response_model=list[SpectrumPoint])
-def lightcurve(ra: float, dec: float, detector: int = 6):
-    # Made-up Mira-like curve (period ~245 d) sampled at 12 epochs.
-    import math
-
-    start = _mjd("2025-05-10")
-    return [
-        SpectrumPoint(wavelength_um=4.7, flux_mjy=round(4000 + 2500 * math.sin(2 * math.pi * k * 45 / 245), 1),
-                      err_mjy=40.0, mjd=start + k * 45, detector=detector, flagged=False)
-        for k in range(12)
-    ]

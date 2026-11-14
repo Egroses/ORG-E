@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import RedirectResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 
-from . import api, config, jobs, mock  # noqa: E402
+from . import api, config, jobs  # noqa: E402
 from .errors import install_error_handlers  # noqa: E402
 from .prebuild import submit_all  # noqa: E402
 
@@ -42,14 +42,12 @@ app.add_middleware(
 install_error_handlers(app)
 app.include_router(api.router)
 app.include_router(jobs.router)
-app.include_router(mock.router)
 
 
 @app.get("/api/health")
 def health():
     return {"status": "ok", "frontend": config.FRONTEND_DIST.is_dir(),
-            "real": ["targets", "resolve", "jobs", "frames", "diff", "gaia"],
-            "mock": ["spectrum", "lightcurve"]}
+            "real": ["targets", "resolve", "jobs", "frames", "diff", "gaia", "spectrum", "lightcurve"]}
 
 
 def mount_frontend(application: FastAPI, dist: Path) -> bool:

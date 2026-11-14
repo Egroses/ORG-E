@@ -7,8 +7,14 @@ Son güncelleme: 14 Kasım 2026.
 
 - [ ] **Mock sunucu hazır.** `backend/` içinde `uvicorn app.main:app --reload`, ardından http://localhost:8000/docs. Kurulum `backend/README.md`'de.
   - Hazır iş kimlikleri: `mock` (tamamlanmış, 3 kare), `mock-running` (1 kare), `mock-error` (`no_coverage`).
-  - `spectrum` ve `lightcurve` şimdilik sahte veri döndürüyor; grafikler buna karşı yazılabilir.
+  - Artık bütün uç noktalar gerçek; mock yalnızca bu üç iş kimliğinde.
   - Mock PNG'ler artık **gerçek SPHEREx kareleri**: Barnard's Star D6, üç dönem (Ağu 2025, Mar 2026, Ağu 2026), 117×117. Fark görüntüsünde (`/api/diff?job=mock&a=0&b=2`) yıldızın kuzeye kayması beyaz üstte, siyah altta görünüyor.
+- [ ] **`/api/spectrum` ve `/api/lightcurve` gerçek.** Önbellekteki kesitlerden ölçülüyor; arşive istek gitmez.
+  - `GET /api/spectrum?ra=&dec=&pmra=&pmdec=`: önbellekteki tüm dedektörler, dalga boyuna göre sıralı. Hızlı hareket eden cisimde (Barnard, WISE 0855) **`pmra`/`pmdec` mutlaka gönderilmeli**; yoksa ölçüm yıldızın eski konumuna yapılır ve akı sıfır çıkar. `resolve` ya da `targets` yanıtındaki öz hareketi aynen geçin.
+  - `GET /api/lightcurve?ra=&dec=&detector=&pmra=&pmdec=&wl_min=&wl_max=`: tek dedektör, tarihe göre sıralı. Her poz farklı dalga boyunda olduğu için dar bir bant (`wl_min`/`wl_max`, mikron) daha temiz eğri verir.
+  - Konumun kesitleri henüz yoksa `no_coverage` (404) döner: önce o konumun karelerini açmak gerekir. Sekme açılınca bu mesaj gösterilebilir.
+  - `flagged: true` noktaları içi boş çizin (tasarımda böyleydi); Barnard'da çekirdek doymuş olduğu için hepsi işaretli.
+  - Barnard D6'da 58 nokta, yaklaşık 3 sn; aynı istek ikinci kez çok daha hızlı.
 - [ ] **`/api/gaia` gerçek.** Gaia DR3, konumlar 2026.0'a taşınmış. Parametreler: `ra`, `dec`, `radius` (derece, varsayılan 0.075: 0,1°'lik karenin köşelerini kapsar, en çok 0.5), `gmag_max` (varsayılan 19), `limit` (varsayılan 500, parlaktan sönüğe). Yanıt yaklaşık 3 sn; aynı istek ikinci kez anında döner. Barnard alanında ~480 kaynak var; işaretçiler kalabalık olursa `gmag_max` düşürülebilir.
 - [ ] **Sözleşmeye eklenen alanlar, onayın gerekiyor:**
   - `grid` (`ra`, `dec`, `scale_arcsec`, `width`, `height`): senin dokümanındaki öneriyle birebir aynı.
