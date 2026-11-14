@@ -26,6 +26,7 @@ Son güncelleme: 14 Kasım 2026.
 - [ ] **Bilinmeyen isim** `not_found` (404), **SIMBAD'a ulaşılamazsa** `archive_unavailable` (503) döner. Çıplak koordinat girilince `source: "coordinates"` gelir ve `pmra`/`pmdec` `null` olur.
 - [ ] **"WISE 0855"** gibi kısa adlar yalnızca beş hedef için çalışıyor (takma ad tablosu). SIMBAD bu cismi `WISEA J085510.74-071442.5` olarak tanıyor.
 - [ ] **Fark modu iş başlatmaz.** URL'deki `mode=diff` için yeni iş açılmamalı; mevcut işin kareleriyle `GET /api/diff?job=&a=&b=` çağrılmalı. Backend'de iş modları yalnızca `epoch` ve `shift_add`.
+- [ ] **Statik yedek paket hazır** (sunucu çökerse). `python -m scripts.export_static --out <klasör>` beş hedefin yanıtlarını, karelerini, fark görüntülerini, spektrum/ışık eğrisi/Gaia verisini dosya olarak yazar; içinde küçük, bağımsız bir görüntüleyici (`index.html`) de var. İstersen arayüzün kendisi de `index.json` üzerinden bu dosyaları okuyabilir (`jobs[]`: `target`, `detector`, `mode`, `job` yolu, `diff` yolu). Kare adresleri pakette görelidir (`frames/<id>/0.png`).
 - [ ] **Hata durum kodları:** `bad_input` 400, `not_found` 404, `no_coverage` 404, `archive_unavailable` 503. Geçersiz istek parametreleri de `bad_input` biçiminde döner.
 - [ ] **Yeni hata kodu `internal_error` (500)**, kareler üretilirken beklenmeyen bir hata olursa. Arayüzde genel bir mesaj yeterli (ör. `Something went wrong while building the frames. Try again.`).
 - [ ] **`POST /api/jobs` artık gerçek.** Mock iş kimlikleri (`mock`, `mock-running`, `mock-error`) aynen çalışmaya devam ediyor.

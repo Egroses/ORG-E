@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPHEREx Blink (offline sample)</title>
+<style>
+  :root { --bg: #0d1117; --panel: #161b22; --text: #e6edf3; --muted: #9da7b3; --accent: #58a6ff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  button { background: var(--panel); color: var(--text); border: 1px solid #30363d; border-radius: 6px;
+           padding: 6px 12px; font: inherit; cursor: pointer; }
+  button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .stage { display: flex; flex-wrap: wrap; gap: 16px; }
+  .player { position: relative; width: min(468px, 100%); aspect-ratio: 1; background: #000;
+            border: 2px solid transparent; }
+  .player.loop { border-style: dashed; border-color: var(--muted); }
+  .player img { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+  .info { flex: 1 1 240px; background: var(--panel); border-radius: 8px; padding: 12px 16px; }
+  .info dt { color: var(--muted); font-size: 13px; }
+  .info dd { margin: 0 0 8px; }
+  .hint { color: var(--muted); font-size: 14px; margin-top: 8px; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>SPHEREx Blink</h1>
+  <p class="lead">Offline sample: pre-computed SPHEREx frames of the challenge targets. Pick a target and watch it change over time.</p>
+  <div class="row" id="targets" aria-label="Targets"></div>
+  <div class="row" id="modes" aria-label="View"></div>
+  <div class="stage">
+    <div class="player" id="player"><img id="frame" alt=""></div>
+    <dl class="info" id="info"></dl>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button id="prev" aria-label="Previous frame">&lt;</button>
+    <button id="play">Pause</button>
+    <button id="next" aria-label="Next frame">&gt;</button>
+    <span id="counter" style="align-self:center;color:var(--muted)"></span>
+  </div>
+  <p class="hint" id="hint"></p>
+  <footer>Data: NASA SPHEREx, via NASA/IPAC Infrared Science Archive. North is up, east is left.
+    Generated <span id="generated"></span>.</footer>
+</main>
+<script>
+const FRAME_MS = 600;
+const state = { index: null, targets: [], entry: null, job: null, n: 0, view: "frames", timer: null, playing: true };
+const $ = (id) => document.getElementById(id);
+
+const fmtDates = (f) => {
+  const opts = { month: "short", day: "numeric", year: "numeric" };
+  const a = new Date(f.t_start + "T00:00:00Z").toLocaleDateString("en-US", { ...opts, timeZone: "UTC" });
+  const b = new Date(f.t_end + "T00:00:00Z").toLocaleDateString("en-US", { ...opts, timeZone: "UTC" });
+  return a === b ? a : `${a} – ${b}`;
+};
+
+function button(label, pressed, onClick) {
+  const b = document.createElement("button");
+  b.textContent = label;
+  b.setAttribute("aria-pressed", String(pressed));
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+function renderTargets() {
+  const box = $("targets");
+  box.replaceChildren();
+  const keys = [...new Set(state.index.jobs.map((j) => j.target))];
+  for (const key of keys) {
+    const t = state.targets.find((x) => x.key === key);
+    box.append(button(t ? t.name : key, state.entry && state.entry.target === key, () => openTarget(key)));
+  }
+}
+
+function renderModes() {
+  const box = $("modes");
+  box.replaceChildren();
+  const jobs = state.index.jobs.filter((j) => j.target === state.entry.target);
+  for (const j of jobs) {
+    const label = j.mode === "shift_add" ? `Shift & add D${j.detector}` : `Epochs D${j.detector}`;
+    box.append(button(label, state.view === "frames" && j === state.entry, () => openJob(j)));
+  }
+  if (state.entry.diff) {
+    box.append(button("Difference (last − first)", state.view === "diff", () => showDiff()));
+  }
+}
+
+function frameLabel(f, i) {
+  if (state.entry.mode === "shift_add") return i === 0 ? "Fixed stack" : "Moving with the object";
+  return fmtDates(f);
+}
+
+function show(n) {
+  const frames = state.job.frames;
+  state.n = (n + frames.length) % frames.length;
+  const f = frames[state.n];
+  $("frame").src = f.url;
+  $("frame").alt = `SPHEREx image, detector ${f.detector}, ${fmtDates(f)}`;
+  $("counter").textContent = `Frame ${state.n + 1} / ${frames.length}`;
+  const stackRow = state.entry.mode === "shift_add" ? `<dt>Stack</dt><dd>${frameLabel(f, state.n)}</dd>` : "";
+  $("info").innerHTML = `${stackRow}
+    <dt>Dates</dt><dd>${fmtDates(f)}</dd>
+    <dt>Detector</dt><dd>D${f.detector}</dd>
+    <dt>Wavelength</dt><dd>${f.wavelength_um[0].toFixed(2)}–${f.wavelength_um[1].toFixed(2)} µm</dd>
+    <dt>Images stacked</dt><dd>${f.n_images}</dd>
+    <dt>Flagged pixels</dt><dd>${(f.flagged_fraction * 100).toFixed(1)}%</dd>`;
+}
+
+function tick() {
+  const last = state.n === state.job.frames.length - 1;
+  $("player").classList.toggle("loop", last);  // mark the jump back to the first frame
+  show(state.n + 1);
+}
+
+function setPlaying(on) {
+  state.playing = on;
+  clearInterval(state.timer);
+  $("play").textContent = on ? "Pause" : "Play";
+  if (on && state.view === "frames") state.timer = setInterval(tick, FRAME_MS);
+}
+
+async function openJob(entry) {
+  state.entry = entry;
+  state.view = "frames";
+  state.job = await (await fetch(entry.job)).json();
+  for (const f of state.job.frames) new Image().src = f.url;  // preload
+  $("player").classList.remove("loop");
+  renderTargets();
+  renderModes();
+  show(0);
+  $("hint").textContent = entry.mode === "shift_add"
+    ? "Shift & add stacks every image along the object's motion: a faint moving object appears in the second frame."
+    : "Each frame stacks one observing season. Moving objects shift between frames.";
+  setPlaying(!matchMedia("(prefers-reduced-motion: reduce)").matches);
+}
+
+function showDiff() {
+  state.view = "diff";
+  setPlaying(false);
+  $("player").classList.remove("loop");
+  $("frame").src = state.entry.diff;
+  $("frame").alt = "Difference image, last minus first frame";
+  $("counter").textContent = "";
+  $("hint").textContent = "Later minus earlier. White: where something appeared or brightened. Black: where it was.";
+  renderModes();
+}
+
+function openTarget(key) {
+  openJob(state.index.jobs.find((j) => j.target === key));
+}
+
+$("prev").addEventListener("click", () => { setPlaying(false); if (state.view === "frames") show(state.n - 1); });
+$("next").addEventListener("click", () => { setPlaying(false); if (state.view === "frames") show(state.n + 1); });
+$("play").addEventListener("click", () => { if (state.view !== "frames") openJob(state.entry); else setPlaying(!state.playing); });
+
+(async () => {
+  state.index = await (await fetch("index.json")).json();
+  state.targets = await (await fetch(state.index.targets)).json();
+  $("generated").textContent = state.index.generated.slice(0, 10);
+  const wanted = new URLSearchParams(location.search).get("target");
+  const first = state.index.jobs.find((j) => j.target === wanted) || state.index.jobs[0];
+  if (first) openJob(first);
+})();
+</script>
+</body>
+</html>

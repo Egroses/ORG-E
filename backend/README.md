@@ -57,6 +57,20 @@ this repository and set the Blueprint path to `backend/render.yaml`.
   to download the test targets on the server (slow, 2-5 min per target and detector).
 - Health check: `GET /api/health`.
 
+## Offline fallback
+
+If the server is down, the test targets can still be shown from static files:
+
+```bash
+python -m scripts.prebuild          # frames for every cached target
+python -m scripts.export_static     # writes data/static/ (or --out <folder>)
+```
+
+The folder holds the API answers as JSON (targets, jobs, spectrum, light curves, Gaia), the
+frames and difference images, and a small stand-alone viewer (`index.html`). Any static host
+(GitHub Pages, Render Static Site) can serve it; locally: `python -m http.server` in that folder.
+`index.json` lists what is inside, so the frontend can also read it directly.
+
 ## Endpoints
 
 | Endpoint | Purpose |
