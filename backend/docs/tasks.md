@@ -50,8 +50,8 @@ Update this file as work progresses (`[x]` when done).
 - [x] `/api/jobs` uses `imaging.make_frames` when installed, falls back to `app/frames.py`; `engine.txt` per job
 - [x] `/api/health`: `cached_units`, `frame_engine`, `patch`
 - [x] Tested with the `feature/imaging-quest` branch on the full cache (69 tests, 5 targets x 2 detector sets)
-- [ ] `imaging/` merged into `main` (imaging owner), then smoke test on `main`
-- [ ] Frontend `realProvider.ts` against `/api/patch` (frontend owner)
+- [x] `imaging/` merged into `main` (79ebb33); on `main`: 69 backend + 27 imaging tests pass, smoke test `/api/patch` Barnard 200
+- [x] Frontend `realProvider.ts` against `/api/patch` (3adb847); checked end to end, five cases open with real data
 
 ## Sunday 18:00 code freeze
 
