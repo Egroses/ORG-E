@@ -7,6 +7,8 @@ Ekibe gönderilecek özet doküman: https://claude.ai/artifact/Kisqc232fpfzyH9zk
 
 ## Arayüz (frontend)
 
+- [ ] **Entegrasyon rehberi hazır:** https://claude.ai/artifact/R5H7kYirH6xdJ4ADwdxpAA (her uç nokta, örnek yanıtlar, hata kodları, TypeScript istemcisi, statik dosyalar). Frontend sahibiyle paylaşılmalı; sonundaki onay listesi yanıt bekliyor.
+- [ ] **`mock-error` ile gerçek başarısız iş farklı:** mock HTTP 404 döner (tasarımdaki gibi), gerçek iş ise 200 + `status: "failed"` + `error`. Frontend ikisini de ele almalı. Onay gelirse mock'u gerçeğe uydururum.
 - [ ] **Mock sunucu hazır.** `backend/` içinde `uvicorn app.main:app --reload`, ardından http://localhost:8000/docs. Kurulum `backend/README.md`'de.
   - Hazır iş kimlikleri: `mock` (tamamlanmış, 3 kare), `mock-running` (1 kare), `mock-error` (`no_coverage`).
   - Artık bütün uç noktalar gerçek; mock yalnızca bu üç iş kimliğinde.
