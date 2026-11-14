@@ -43,6 +43,21 @@ Tests: `python -m pytest -q` (add `NETWORK_TESTS=1` to also query SIMBAD live)
 
 Regenerate mock PNGs: `python -m scripts.make_mock_pngs`
 
+## Deploy (Render)
+
+`backend/render.yaml` is a Render Blueprint: one web service (Starter, 0.5 CPU / 512 MB) in
+Virginia with a 1 GB persistent disk mounted on `cache/`. In Render: **New > Blueprint**, pick
+this repository and set the Blueprint path to `backend/render.yaml`.
+
+- Build: `backend/scripts/render_build.sh` installs the pipeline lock file and backend
+  requirements, and builds `frontend/` if it exists. The backend then serves `frontend/dist`
+  at `/` (API under `/api`), so the whole tool has one URL.
+- On start, `PREBUILD_ON_START=1` queues frame jobs for every test target already in the cache.
+- Fill the disk with the pipeline cache: copy `cache/` from the pipeline machines (`scp` over
+  Render SSH), or run `cd backend && python -m scripts.prebuild --download` in the Render shell
+  to download the test targets on the server (slow, 2-5 min per target and detector).
+- Health check: `GET /api/health`.
+
 ## Endpoints
 
 | Endpoint | Purpose |

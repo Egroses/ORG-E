@@ -14,6 +14,7 @@ Son güncelleme: 14 Kasım 2026.
   - Her karede `mjd_mean`: dönem şeridini zamana orantılı çizmek için.
   - İş yanıtında `error`: yalnızca `status` `failed` olduğunda dolu, diğer durumlarda `null`.
 - [ ] **Kare adresleri göreli** (`/api/frames/mock/0.png`). Başlarına `VITE_API_BASE` eklenmeli.
+- [ ] **Yayın önerisi: arayüz ve backend tek adreste.** `frontend/dist` varsa backend onu `/` adresinde sunuyor, API `/api` altında. Bu durumda `VITE_API_BASE` boş kalabilir (aynı adres). Render derleme betiği `frontend/package.json` bulursa `npm ci && npm run build` çalıştırıyor; derleme çıktısının `frontend/dist` olması yeterli (Vite varsayılanı). Onaylıyor musun?
 - [ ] **`/api/resolve` ve `/api/targets` artık gerçek.** Koordinat (derece ya da saat-derece) ve isim kabul ediyor. Beş hedef sabit tablodan anında dönüyor, diğer isimler SIMBAD'a gidiyor (yaklaşık 0,5–1 sn). Öz hareket değerleri SIMBAD'dan alındı; beş hedefin hepsinde `pmra`/`pmdec` dolu, artık `null` yok.
 - [ ] **Bilinmeyen isim** `not_found` (404), **SIMBAD'a ulaşılamazsa** `archive_unavailable` (503) döner. Çıplak koordinat girilince `source: "coordinates"` gelir ve `pmra`/`pmdec` `null` olur.
 - [ ] **"WISE 0855"** gibi kısa adlar yalnızca beş hedef için çalışıyor (takma ad tablosu). SIMBAD bu cismi `WISEA J085510.74-071442.5` olarak tanıyor.
@@ -44,7 +45,7 @@ Son güncelleme: 14 Kasım 2026.
 - [ ] **Hedef konumları:** backend 5 hedefin konumunu doğrudan `pipeline/targets.json`'dan okuyor. Dosya değişirse haber verin.
 - [ ] **Python sürümü:** backend pipeline'ı aynı süreçte çağıracağı için sunucuda Python 3.12 ve `pipeline/requirements.lock.txt` sürümleri kullanılacak.
 - [ ] **`get_cutouts` önbellekte olsa da her seferinde arşive SIA sorgusu atıyor** (yaklaşık 18 sn, arşiv kapalıysa hata). Backend bu yüzden `manifest.csv` varsa pipeline'ı çağırmadan doğrudan önbellekten okuyor; dizini bulmak için `pipeline.cutouts._directory` kullanılıyor. Bu fonksiyonun adı ya da önbellek düzeni değişirse haber verin. Kodu değiştirmenizi istemiyorum, bilgi amaçlı.
-- [ ] **Sunucudaki önbellek:** beş hedefin `cache/` klasörü sunucuya kopyalandığında backend onları arşive hiç gitmeden açar. Yükleme kararı verilince backend'e haber verin.
+- [ ] **Sunucudaki önbellek:** beş hedefin `cache/` klasörü sunucuya kopyalandığında backend onları arşive hiç gitmeden açar. Önerilen yol: iki pay birleştirilip `verify --assignment all` ile `PASS` alındıktan sonra `cache/` arşivlenip Render diskine `scp` ile kopyalanır. Kopyalanamazsa sunucu kendisi indirebilir (`python -m scripts.prebuild --download`, tek iş, 3 bağlantı), ama bu arşive ikinci kez yük bindirir.
 
 ## Herkes
 
@@ -56,7 +57,7 @@ Son güncelleme: 14 Kasım 2026.
 
 ## Açık kararlar
 
-- Barındırma servisi (kalıcı disk gerekli)
+- Barındırma servisi (kalıcı disk gerekli). **Öneri hazır:** https://claude.ai/artifact/3g7vx4vGPhYNmT1NMSCFgJ (Render Starter + 1 GB disk, ayda 7,25 $; hesap ve kart kararı gerekiyor)
 - İlerleme bildirimi: 2 saniyelik sorgulama mı, SSE mi
 - Gaia: backend uç noktası mı, Aladin Lite katmanı mı
 - Demo sırasında rastgele koordinatlarla canlı sorgu açık kalacak mı

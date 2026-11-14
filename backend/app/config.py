@@ -14,6 +14,12 @@ JOBS_DIR = DATA_DIR / "jobs"
 # At most this many jobs download/process at the same time; the rest wait as "queued".
 MAX_RUNNING_JOBS = int(os.environ.get("MAX_RUNNING_JOBS", "2"))
 
+# Built frontend (Vite `dist/`). If it exists, the backend serves it at "/" (one URL for all).
+FRONTEND_DIST = Path(os.environ.get("FRONTEND_DIST", REPO_ROOT / "frontend" / "dist"))
+
+# Build frames for the cached test targets in the background when the server starts.
+PREBUILD_ON_START = os.environ.get("PREBUILD_ON_START", "0") == "1"
+
 # Center epoch of the frames (decimal year); positions from /api/resolve use the same.
 CENTER_EPOCH = 2026.0
 

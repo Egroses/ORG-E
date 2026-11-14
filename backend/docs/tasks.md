@@ -25,7 +25,8 @@ Update this file as work progresses (`[x]` when done).
 
 ## Saturday night
 
-- [ ] First public deploy: Barnard's Star animation playing at a public URL
+- [x] Deploy config ready: `backend/render.yaml` (Render Starter + 1 GB disk), build script, frontend served at `/`, prebuild on start. Proposal: https://claude.ai/artifact/3g7vx4vGPhYNmT1NMSCFgJ
+- [ ] First public deploy: Barnard's Star animation playing at a public URL (needs a Render account + card from the team)
 - [ ] Persistent disk + cache on the server
 
 ## Sunday morning
