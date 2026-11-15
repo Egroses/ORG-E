@@ -35,11 +35,16 @@ because a field centred even one arcsecond away would otherwise miss the cache. 
 10 arcseconds (`SNAP_ARCSEC` in `backend/app/patch.py`); the frontend still sends the exact `targets.json` numbers; the
 reference dev server (`imaging/dev_server.py`, tests only) snaps within 0.001 degree (3.6 arcsec).
 
-**Live queries (coordinates that are not cached) are slow.** Since commit `48d4e82` (15 Nov) the one-detector limit is gone:
-for a position that is not cached the backend downloads **every requested detector** from the SPHEREx archive, one after the
-other, and then builds the patch. Each detector takes about 2 to 5 minutes. Measured live run (15 Nov, backend owner):
-RA 10, Dec 10, `dets=2,4,6` = 167 files in **15.5 minutes**, 0 failed. Other positions and `dets=1,...,6` were not timed
-by us (6 detectors would be roughly twice as long: an extrapolation, not a measurement). Live queries are on by default
+**Live queries (coordinates that are not cached) take minutes.** Since commit `48d4e82` (15 Nov) the one-detector limit is
+gone: for a position that is not cached the backend downloads **every requested detector**, one after the other, and then
+builds the patch. Since commit `37ae5c5` (15 Nov) the images are read from the public AWS copy of SPHEREx
+(`pipeline/s3.py`, `ARCHIVE_SOURCE=s3`, the default): only the rows around the position, 20 connections, IRSA's cutout
+service as fallback per file. Measured (15 Nov, backend owner): Barnard's Star `dets=2,4,6` = 178 images in **103 s**
+(about 0.6 s per image); 6 detectors are expected around 3.5 minutes (an extrapolation, not a measurement). With
+`ARCHIVE_SOURCE=irsa` (IRSA's cutout service only) the same kind of request took **15.5 minutes** (RA 10, Dec 10,
+`dets=2,4,6`, 167 files). Before any download the backend asks IRSA which images cover the position (SIA); when that
+service is down (HTTP 502 on 15 Nov from about 14:00) an uncached position fails with `archive_unavailable` and a short
+message, while the five cached targets keep working. Live queries are on by default
 (`LIVE_QUERIES=1` in `backend/app/config.py` and in `backend/render.yaml`: the team decided on 15 Nov to run with live queries on, also on the hosted service; whether the hosted service is deployed was not verified). With live queries off, an uncached position answers `200` with `"status": "failed"` and
 `"error": {"code": "archive_unavailable", ...}` at once.
 
@@ -51,7 +56,7 @@ ignore fields they do not know. A server restart in the middle keeps the files a
 only the rest.
 
 The frontend therefore keeps polling every 2 s and gives up after **25 minutes** for a position that is not in the saved
-set (3 minutes for a saved target; `frontend/README.md`).
+set (3 minutes for a saved target; `frontend/README.md`). With the AWS copy that limit is far above the expected time.
 
 **Epoch settings used by the frontend** (measured on the cached data, detectors 2,4,6):
 
