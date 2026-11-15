@@ -61,13 +61,11 @@ export const en = {
   'reset.link': 'Start over: reset all cases',
 
   // landing
-  'land.tag': 'Real infrared images from NASA’s SPHEREx telescope',
   'land.title': 'Something changed. Can you catch it?',
   'land.lead': 'SPHEREx photographs the whole sky every six months. Blink through the visits to one patch of sky and find the dot that moved or changed its glow. Then measure it and check it against the star catalogues.',
   'land.start': 'Find your first mover',
   'land.jump': 'Or jump to any spot in the sky',
   'land.placeholder': 'Star name, or RA and Dec (08h55m10s −07°14′42″)',
-  'land.modes': 'Game: five practice cases with known answers. Realistic: {sub} Nobody here claims a planet discovery.',
   'land.caption': '{name}, {fov}′ wide. Visits: {dates}.',
   'land.fiveCases': 'Five practice cases',
   'land.allCases': 'All cases',
@@ -453,13 +451,11 @@ export const tr: Record<keyof typeof en, string> = {
   'reset.cancel': 'Vazgeç',
   'reset.link': 'Baştan başla: tüm vakaları sıfırla',
 
-  'land.tag': 'NASA’nın SPHEREx teleskobundan gerçek kızılöte görüntüler',
   'land.title': 'Bir şey değişti. Yakalayabilir misin?',
   'land.lead': 'SPHEREx tüm gökyüzünü altı ayda bir fotoğraflar. Gökyüzünün bir parçasının gözlem dönemlerini yanıp sönme (Blink) ile art arda izle ve yer değiştiren ya da ışıması değişen noktayı bul. Sonra onu ölç ve yıldız kataloglarıyla karşılaştır.',
   'land.start': 'İlk hareketlini bul',
   'land.jump': 'Ya da gökyüzünde istediğin bir noktaya git',
   'land.placeholder': 'Yıldız adı ya da RA ve Dec (08h55m10s −07°14′42″)',
-  'land.modes': 'Oyun: yanıtı bilinen beş alıştırma vakası. Gerçekçi: {sub} Burada kimse bir gezegen keşfettiğini iddia etmiyor.',
   'land.caption': '{name}, {fov}′ genişliğinde. Gözlem dönemleri: {dates}.',
   'land.fiveCases': 'Beş alıştırma vakası',
   'land.allCases': 'Tüm vakalar',

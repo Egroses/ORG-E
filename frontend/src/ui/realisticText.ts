@@ -26,7 +26,6 @@ export const R = {
   get modeGameTitle() { return t('r.modeGameTitle'); },
   get modeRealisticTitle() { return t('r.modeRealisticTitle'); },
   get landingExplore() { return t('r.landingExplore'); },
-  get landingExploreSub() { return t('r.landingExploreSub'); },
   get gateTitle() { return t('r.gateTitle'); },
   get gateLead() { return t('r.gateLead'); },
   get gateHelp() { return t('r.gateHelp'); },

@@ -44,7 +44,6 @@ export function Landing({ heroPatch, patches, results, onStart, onOpen, onJump, 
     <main className="page wide">
       <section className="hero">
         <div className="hero-text">
-          <span className="tag">{t('land.tag')}</span>
           <h1 className="t-display">{t('land.title')}</h1>
           <p className="t-lead c-2">
             {t('land.lead')}
@@ -70,7 +69,6 @@ export function Landing({ heroPatch, patches, results, onStart, onOpen, onJump, 
             {busy && <p className="t-caption c-2" role="status">{t('resolve.busy', { name: busy })}</p>}
             {error && <p id="jump-error" className="form-error" role="alert">{t(searchErrorKey(error))}</p>}
           </form>
-          <p className="t-caption c-3">{t('land.modes', { sub: R.landingExploreSub })}</p>
         </div>
 
         <figure className="hero-sky">
