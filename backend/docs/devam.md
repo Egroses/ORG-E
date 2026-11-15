@@ -75,8 +75,7 @@ Claude dokümanları:
 
 1. ~~Yeni veriyle yenileme komutu~~ **yapıldı (15 Kasım):** `python -m scripts.refresh` (`--check` yalnızca rapor).
    Sonuçlar manifest damgası saklıyor, önbellek değişince aynı kimlikle yeniden üretiliyor. Testler 71 passed.
-2. **`mock-error` farkı.** Mock HTTP 404 dönüyor, gerçek başarısız iş 200 + `status: "failed"`. Frontend sahibinin
-   onayıyla mock'u gerçeğe uydur (yeni frontend `/api/jobs` kullanmıyor, aciliyeti düşük).
+2. ~~`mock-error` farkı~~ **kapandı:** yeni frontend `/api/jobs` kullanmıyor; `/api/patch` hata yönetimi iki biçimi de karşılıyor.
 3. **Epsilon Indi B kısa dönemler.** Varsayılan 10/30 ayarında 1 ve 3 görüntülük dönemler çıkıyor. Arayüz 30/60
    kullandığı için oyunda sorun yok; `/api/jobs` için karar imaging sahibiyle.
 4. **Parlak yıldız fotometrisi.** Barnard D6 ve R Dra D4-D6 noktaları doymuş (`flagged`). Kanatlardan ölçüm yöntemi yok.
