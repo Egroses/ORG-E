@@ -35,6 +35,7 @@ export const en = {
   'r.useVisits': 'Visits in the blink',
   'r.useVisit': 'Include visit {n} ({label}) in the blink',
   'r.refPrev': 'Previous visit',
+  'canvas.keyHelp': 'Enter marks the centre. Plus and minus zoom, 0 resets the zoom, the arrow keys move a zoomed picture.',
   // ---- old wording that was no longer true ----
   'gate.wait': 'Saved positions open in a moment. Any other position is downloaded from the SPHEREx archive, which can take 15 minutes or more.',
   'gate.cached': 'Saved targets',
@@ -65,6 +66,7 @@ export const tr: Record<keyof typeof en, string> = {
   'r.useVisits': 'Art arda gösterimdeki dönemler',
   'r.useVisit': '{n}. dönemi ({label}) art arda gösterime kat',
   'r.refPrev': 'Önceki dönem',
+  'canvas.keyHelp': 'Enter merkezi işaretler. Artı ve eksi yakınlaştırır, 0 yakınlaştırmayı sıfırlar, ok tuşları yakınlaştırılmış görüntüyü kaydırır.',
   'live.notice': 'Bu konum kayıtlı konumlar arasında yok; görüntüler SPHEREx arşivinden indiriliyor. Bu 15 dakika ya da daha uzun sürebilir. Sayfayı açık bırakabilirsin.',
   'live.barLabel': 'İndirme ilerlemesi',
   'live.bar': '{total} görüntünün {done} tanesi indirildi',

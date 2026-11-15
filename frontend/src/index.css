@@ -315,7 +315,8 @@ hr.div { height: 1px; margin: 0; border: 0; background: var(--border); align-sel
 .sky-compass { position: absolute; right: 10px; bottom: 34px; pointer-events: none; }
 .sky-scale { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font: 500 11px/1 var(--mono); pointer-events: none; text-shadow: 0 0 3px #000; }
 .sky-scale-bar { display: block; height: 4px; border: 1.5px solid #fff; border-top: 0; }
-.sky-readout { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 10px; padding: 3px 9px; border-radius: 6px; background: rgba(0,0,0,.7); font: 400 11px/1.4 var(--mono); pointer-events: none; white-space: nowrap; max-width: calc(100% - 100px); overflow: hidden; }
+.sky-readout { position: absolute; left: 10px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 0 10px; padding: 3px 9px; border-radius: 6px; background: rgba(0,0,0,.7); font: 400 11px/1.4 var(--mono); pointer-events: none; white-space: nowrap; max-width: calc(100% - 100px); overflow: hidden; }
+.sky-readout span:last-child { white-space: normal; }
 .sky-readout .muted { color: #b5b5b5; overflow: hidden; text-overflow: ellipsis; }
 
 .bar { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }

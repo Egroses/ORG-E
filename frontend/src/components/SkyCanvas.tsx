@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { CompareMode, Detail, Pt, SkyPatch } from '../data/types';
 import { maskedMean, paintDiff, paintImage, refNoise, sharedStretch, subtract, unionMask, type Stretch, type StretchFn } from '../sky/render';
 import { formatMJySr } from '../lib/format';
@@ -107,6 +107,7 @@ export function SkyCanvas({
   stretchOverride, quality = 'none', physical = false, refEpoch = 0, stackEpochs,
 }: Props) {
   const { t } = useI18n();
+  const keyHelpId = useId();
   const ref = useRef<HTMLCanvasElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
@@ -225,9 +226,11 @@ export function SkyCanvas({
   const zoomAtRef = useRef(zoomAt);
   zoomAtRef.current = zoomAt;
 
+  // Only a picture that can be zoomed takes the mouse wheel; the small ones on the landing page and the board must let the page scroll.
+  const interactive = chrome || !!onTap;
   useEffect(() => {
     const el = boxRef.current;
-    if (!el) return;
+    if (!el || !interactive) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const r = el.getBoundingClientRect();
@@ -236,7 +239,24 @@ export function SkyCanvas({
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, []);
+  }, [interactive]);
+
+  /** Keyboard on the picture: + and − zoom, 0 resets, the arrow keys move a zoomed picture (at 1x they keep stepping through visits). */
+  function onKeys(e: React.KeyboardEvent<HTMLButtonElement>) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const cur = userRef.current ?? presetRef.current;
+    if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomAt(0.5, 0.5, 1.5); }
+    else if (e.key === '-' || e.key === '_' || e.key === '−') { e.preventDefault(); zoomAt(0.5, 0.5, 1 / 1.5); }
+    else if (e.key === '0') { e.preventDefault(); setUser({ k: 1, cx: 0.5, cy: 0.5 }); }
+    else if (cur.k > 1 && e.key.startsWith('Arrow')) {
+      e.preventDefault();
+      e.stopPropagation();
+      const step = 0.15 / cur.k;
+      const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+      const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+      setUser(clampView({ k: cur.k, cx: cur.cx + dx, cy: cur.cy + dy }));
+    }
+  }
 
   const dragged = useRef(false);
   function startDrag(e: React.PointerEvent<HTMLElement>) {
@@ -318,6 +338,7 @@ export function SkyCanvas({
     <div
       ref={boxRef}
       className={`sky ${chrome ? 'sky-chrome' : ''} ${className}`}
+      style={scale > 1 ? { touchAction: 'none' } : undefined}
       onPointerMove={handleMove}
       onPointerDown={startDrag}
       onPointerLeave={() => setCursor(null)}
@@ -366,7 +387,10 @@ export function SkyCanvas({
           <span key={i} className="sky-label" style={{ left: l.left, top: l.top, color: l.color }}>{l.text}</span>
         ))}
       </div>
-      {onTap && <button type="button" className="sky-tap" aria-label={tapLabel ?? t('canvas.tap')} onClick={handleClick} />}
+      {onTap && (
+        <button type="button" className="sky-tap" aria-label={tapLabel ?? t('canvas.tap')} aria-describedby={`${keyHelpId}`} aria-keyshortcuts="+ - 0 ArrowLeft ArrowRight ArrowUp ArrowDown" onClick={handleClick} onKeyDown={onKeys} />
+      )}
+      {onTap && <span id={keyHelpId} className="sr-only">{t('canvas.keyHelp')}</span>}
       {chrome && (
         <>
           <svg className="sky-compass" width="44" height="44" viewBox="0 0 44 44" aria-label={t('canvas.compass')} role="img">

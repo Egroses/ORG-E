@@ -1,6 +1,7 @@
 .fov-input { position: relative; display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 0 8px; border-radius: var(--r-ctl); border: 1px solid var(--border-2); background: var(--surface); color: var(--text-2); }
-.fov-input:focus-within { border-color: var(--accent); }
+.fov-input:focus-within { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 1px; }
 .fov-input input { width: 38px; background: none; border: 0; outline: none; text-align: right; font: 500 13px/1.4 var(--mono); color: var(--text); }
 .fov-input input[aria-invalid='true'] { color: var(--bad); }
 .fov-msg { position: absolute; top: 38px; left: 0; width: 260px; max-width: 80vw; padding: 8px 10px; border-radius: var(--r-ctl); background: var(--surface); border: 1px solid var(--bad); color: var(--bad); font: 500 12px/1.4 var(--sans); box-shadow: var(--shadow); z-index: 30; }
 .fov-hint { margin: 0; padding: 6px 16px; background: var(--elevated); border-bottom: 1px solid var(--border-2); color: var(--text-2); font: 400 12px/1.4 var(--sans); }
+@media (max-width: 1620px) { .tb-tool a.btn .lbl { display: none; } .tb-tool a.btn { padding: 0 8px; } }

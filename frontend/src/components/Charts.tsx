@@ -1,5 +1,5 @@
 import type { FluxSeries } from '../sky/photometry';
-import { fluxChartLayout, spectrumChartLayout, type ChartLayout, type SpectrumPoint } from '../sky/charts';
+import { fluxChartLayout, spectrumChartLayout, tickAnchor, type ChartLayout, type SpectrumPoint } from '../sky/charts';
 import { useI18n } from '../i18n/react';
 
 // Two small SVG charts. They draw measurements only: no fitted curve, no model.
@@ -18,7 +18,7 @@ function Frame({ layout, xTitle, yTitle }: { layout: ChartLayout; xTitle: string
       {layout.xTicks.map((t) => (
         <g key={`x${t.x}`}>
           <line x1={t.x} x2={t.x} y1={box.h - box.bottom} y2={box.h - box.bottom + 4} className="chart-tick" />
-          <text x={t.x} y={box.h - box.bottom + 15} textAnchor="middle">{t.label}</text>
+          <text x={t.x} y={box.h - box.bottom + 15} textAnchor={tickAnchor(t.x, t.label, box.w)}>{t.label}</text>
         </g>
       ))}
       {layout.zeroY !== null && <line x1={box.left} x2={box.w - box.right} y1={layout.zeroY} y2={layout.zeroY} className="chart-zero" />}
