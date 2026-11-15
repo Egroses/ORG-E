@@ -8,6 +8,7 @@ import type { Theme } from '../state/theme';
 import { Icon } from './Icon';
 import { LANGS } from '../i18n';
 import { useI18n } from '../i18n/react';
+import { searchErrorKey, useSearchSubmit, type SearchResult } from '../lib/useSearchSubmit';
 
 export function Logo({ size = 28 }: { size?: number }) {
   return (
@@ -24,7 +25,9 @@ export interface ToolControls {
   /** The target shown in the menu ('' when exploring somewhere else). */
   target: TargetId | '';
   onTarget: (id: TargetId) => void;
-  onSearch: (text: string) => string | null;
+  onSearch: (text: string) => SearchResult;
+  /** Official name of a position that was looked up by name (shown instead of "Custom position"). */
+  customLabel?: string;
   /** Only in Explore: the field of view can be changed. */
   fov?: { value: number; onChange: (v: number) => void };
   share?: { url: string; aladin: string; realistic?: boolean };
@@ -109,17 +112,17 @@ function ShareMenu({ url, aladin, realistic }: { url: string; aladin: string; re
   );
 }
 
-function SearchBox({ onSearch }: { onSearch: (t: string) => string | null }) {
+function SearchBox({ onSearch }: { onSearch: (t: string) => SearchResult }) {
   const { t } = useI18n();
   const [text, setText] = useState('');
-  const [err, setErr] = useState<string | null>(null);
+  const { busy, error: err, submit, clear } = useSearchSubmit(onSearch);
   return (
     <form
       className="search"
       role="search"
       onSubmit={(e) => {
         e.preventDefault();
-        if (text.trim()) setErr(onSearch(text));
+        if (text.trim()) submit(text);
       }}
     >
       <Icon name="search" size={14} />
@@ -128,13 +131,14 @@ function SearchBox({ onSearch }: { onSearch: (t: string) => string | null }) {
         value={text}
         spellCheck={false}
         autoComplete="off"
-        onChange={(e) => { setText(e.target.value); setErr(null); }}
+        onChange={(e) => { setText(e.target.value); clear(); }}
         aria-label={t('search.label')}
         aria-describedby={err ? 'search-err' : undefined}
         placeholder={t('search.placeholder')}
       />
       <button type="submit" aria-label={t('search.go')}><Icon name="arrow" size={14} /></button>
-      {err && <p id="search-err" className="search-err" role="alert">{t('search.error')}</p>}
+      {busy && <p className="search-err search-busy" role="status">{t('resolve.busy', { name: busy })}</p>}
+      {err && <p id="search-err" className="search-err" role="alert">{t(searchErrorKey(err))}</p>}
     </form>
   );
 }
@@ -167,7 +171,7 @@ export function TopBar({ results, active, theme, onTheme, onHome, onCases, onExp
           <label className="select-wrap">
             <span className="sr-only">{t('tb.target')}</span>
             <select className="select" value={tool.target} onChange={(e) => e.target.value && tool.onTarget(e.target.value as TargetId)}>
-              {tool.target === '' && <option value="">{t('tb.custom')}</option>}
+              {tool.target === '' && <option value="">{tool.customLabel ?? t('tb.custom')}</option>}
               {CASES.map((c) => <option key={c.id} value={c.id}>{tool.targetLabel ? tool.targetLabel(c) : t('tb.caseOption', { n: c.n, nick: c.nick })}</option>)}
             </select>
           </label>

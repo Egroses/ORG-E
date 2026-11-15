@@ -10,6 +10,13 @@ export const en = {
   'live.failed': '{n} images could not be read so far.',
   'live.elapsed': 'Time so far: {time}',
   'live.detector': 'Detector {n} of {m}',
+  // ---- name lookup (/api/resolve) ----
+  'resolve.busy': 'Looking up {name}…',
+  'resolve.found': 'Found: {name}',
+  'resolve.err.badQuery': 'That text could not be used as a name. Type a star name, or coordinates like 08h55m10s −07°14′42″.',
+  'resolve.err.notFound': 'No object with that name was found. Check the spelling, or type coordinates instead.',
+  'resolve.err.unreachable': 'Could not reach the name lookup service. The five practice names and coordinates still work.',
+  'resolve.err.service': 'The name lookup service reported a problem. Try again in a little while, or type coordinates.',
   // ---- old wording that was no longer true ----
   'gate.wait': 'Saved positions open in a moment. Any other position is downloaded from the SPHEREx archive, which can take 15 minutes or more.',
   'gate.cached': 'Saved targets',
@@ -19,6 +26,12 @@ export const en = {
 } as const;
 
 export const tr: Record<keyof typeof en, string> = {
+  'resolve.busy': '{name} aranıyor…',
+  'resolve.found': 'Bulundu: {name}',
+  'resolve.err.badQuery': 'Bu yazı bir ad olarak kullanılamadı. Bir yıldız adı ya da 08h55m10s −07°14′42″ gibi koordinatlar yaz.',
+  'resolve.err.notFound': 'Bu adla bir cisim bulunamadı. Yazımı kontrol et ya da onun yerine koordinat yaz.',
+  'resolve.err.unreachable': 'Ad arama servisine ulaşılamadı. Beş alıştırma hedefinin adları ve koordinatlar yine çalışır.',
+  'resolve.err.service': 'Ad arama servisi bir sorun bildirdi. Biraz sonra yeniden dene ya da koordinat yaz.',
   'live.notice': 'Bu konum kayıtlı konumlar arasında yok; görüntüler SPHEREx arşivinden indiriliyor. Bu 15 dakika ya da daha uzun sürebilir. Sayfayı açık bırakabilirsin.',
   'live.barLabel': 'İndirme ilerlemesi',
   'live.bar': '{total} görüntünün {done} tanesi indirildi',

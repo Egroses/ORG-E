@@ -4,6 +4,8 @@ import { CASES, FOV_OPTIONS, KNOWN } from './data/catalog';
 import { caseRequest, loadPatch, patchKey, realisticRequest } from './data/provider';
 import { answerKey, evaluate } from './sky/analysis';
 import { lookupName, parseCoords } from './sky/astro';
+import { resolveName, ResolveError, type Resolved } from './sky/resolve';
+import type { SearchResult } from './lib/useSearchSubmit';
 import {
   clearReveal, loadProgress, loadReveal, saveProgress, storeReveal, type Candidate, type Observation, type Progress, type RevealState,
 } from './state/progress';
@@ -49,6 +51,9 @@ interface LoadState {
   /** What went wrong, kept as data: the text is made in the current language when it is shown. */
   error: { err: unknown; strict: boolean } | null;
 }
+
+/** The name lookup in flight, so a newer search can stop an older one. */
+let lookupCtl: AbortController | null = null;
 
 const isTarget = (s: string | undefined): s is TargetId => !!s && CASES.some((c) => c.id === s);
 
@@ -125,8 +130,22 @@ function resolveQuery(text: string, fov: number, view: ViewMode, group: Realisti
     return { req: view === 'realistic' ? realisticRequest(c.ra, c.dec, fov, group) : c };
   }
   const c = parseCoords(text);
-  if (c) return { req: view === 'realistic' ? realisticRequest(c.ra, c.dec, fov, group) : { ra: c.ra, dec: c.dec, fovDeg: fov } };
+  if (c) return { req: requestAt(c, fov, view, group) };
   return { error: true };
+}
+
+/** A request for a free position. Within 10 arcseconds of a saved target it uses that target's exact numbers, so the
+ *  backend finds the saved copy (see docs/patch-api.md). */
+function requestAt(c: { ra: number; dec: number }, fov: number, view: ViewMode, group: RealisticState['group']): PatchRequest {
+  const near = CASES.find((k) => {
+    const r = caseRequest(k.id, fov);
+    return Math.hypot((r.ra - c.ra) * Math.cos((c.dec * Math.PI) / 180), r.dec - c.dec) * 3600 < 10;
+  });
+  if (near) {
+    const r = caseRequest(near.id, fov);
+    return view === 'realistic' ? realisticRequest(r.ra, r.dec, fov, group) : r;
+  }
+  return view === 'realistic' ? realisticRequest(c.ra, c.dec, fov, group) : { ra: c.ra, dec: c.dec, fovDeg: fov };
 }
 
 const shareUrl = (req: PatchRequest, view: ViewMode = 'game', rs: RealisticState = DEFAULT_REALISTIC) =>
@@ -145,6 +164,8 @@ export default function App() {
   const [reveal, setReveal] = useState<RevealState | null>(loadReveal);
   const [loads, setLoads] = useState<Record<string, LoadState>>({});
   const [queryText, setQueryText] = useState('');
+  /** The official name of a position found by name, kept while that position is on screen. */
+  const [resolved, setResolved] = useState<{ name: string; ra: number; dec: number } | null>(null);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
   const toggleTheme = () => setTheme((t) => { const n = t === 'dark' ? 'light' : 'dark'; applyTheme(n); return n; });
@@ -250,12 +271,34 @@ export default function App() {
     navigate({ name: 'reveal', id });
   }
 
-  function handleSearch(text: string, fov: number): string | null {
-    const r = resolveQuery(text, fov, exploreRoute?.view ?? 'game', exploreRoute?.rs.group ?? DEFAULT_REALISTIC.group);
-    if ('error' in r) return 'invalid';
-    setQueryText(text);
-    navigate({ name: 'explore', req: r.req, view: exploreRoute?.view ?? 'game', rs: { ...DEFAULT_REALISTIC, group: exploreRoute?.rs.group ?? DEFAULT_REALISTIC.group } });
-    return null;
+  /** Built-in names and coordinates work offline and answer at once; anything else is looked up by the service. */
+  function handleSearch(text: string, fov: number): SearchResult {
+    const view = exploreRoute?.view ?? 'game';
+    const group = exploreRoute?.rs.group ?? DEFAULT_REALISTIC.group;
+    const go = (req: PatchRequest) => {
+      navigate({ name: 'explore', req, view, rs: { ...DEFAULT_REALISTIC, group } });
+    };
+    const r = resolveQuery(text, fov, view, group);
+    if ('req' in r) {
+      setQueryText(text);
+      setResolved(null);
+      go(r.req);
+      return null;
+    }
+    // A newer lookup replaces an older one.
+    lookupCtl?.abort();
+    const ctl = new AbortController();
+    lookupCtl = ctl;
+    return resolveName(text, { signal: ctl.signal }).then(
+      (res: Resolved) => {
+        const req = requestAt(res, fov, view, group);
+        setQueryText(text);
+        setResolved({ name: res.name, ra: req.ra, dec: req.dec });
+        go(req);
+        return null;
+      },
+      (e: unknown) => (e instanceof ResolveError ? e.kind : ctl.signal.aborted ? 'aborted' : 'service'),
+    );
   }
 
   function resetProgress() {
@@ -420,6 +463,7 @@ export default function App() {
   const load = req ? loads[loadKey(req)] : undefined;
   const caseHere = req ? CASES.find((c) => { const r = caseRequest(c.id, req.fovDeg); return Math.abs(r.ra - req.ra) < 1e-4 && Math.abs(r.dec - req.dec) < 1e-4; }) : undefined;
   const withFov = (v: number): PatchRequest => (realistic ? realisticRequest(req!.ra, req!.dec, v, route.rs.group) : { ra: req!.ra, dec: req!.dec, fovDeg: v });
+  const shownName = req && resolved && Math.abs(resolved.ra - req.ra) < 1e-4 && Math.abs(resolved.dec - req.dec) < 1e-4 ? resolved.name : null;
   const exploreTool: ToolControls = {
     target: caseHere?.id ?? (req ? '' : CASES[0].id),
     onTarget: (id) => {
@@ -428,6 +472,7 @@ export default function App() {
     },
     targetLabel: realistic ? (c) => KNOWN[c.id].name : undefined,
     onSearch: (t) => handleSearch(t, req?.fovDeg ?? 0.1),
+    customLabel: shownName ?? undefined,
     fov: req ? { value: req.fovDeg, onChange: (v) => navigate({ name: 'explore', req: withFov(v), view: route.view, rs: realistic ? (live ?? route.rs) : route.rs }) } : undefined,
     share: req && load?.patch
       ? (realistic
@@ -465,6 +510,7 @@ export default function App() {
           initialFov={req?.fovDeg ?? 0.1}
           loading={req && !load?.error ? load?.step ?? 'finding' : null}
           live={load?.live ?? null}
+          resolvedName={shownName}
           error={load?.error ? (load.error.strict ? R.loadError(errorText(load.error.err)) : t('gate.loadError', { msg: errorText(load.error.err) })) : null}
           realistic={realistic}
           onSearch={handleSearch}

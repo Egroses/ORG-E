@@ -5,6 +5,7 @@ import { FOV_OPTIONS, KNOWN } from '../data/catalog';
 import { R } from '../ui/realisticText';
 import { num } from '../i18n';
 import { useI18n } from '../i18n/react';
+import { searchErrorKey, useSearchSubmit, type SearchResult } from '../lib/useSearchSubmit';
 
 interface Props {
   initialText?: string;
@@ -13,7 +14,9 @@ interface Props {
   /** Set once the backend says this position is downloaded live (not in the saved set). */
   live?: LiveProgress | null;
   error?: string | null;
-  onSearch: (text: string, fov: number) => string | null;
+  onSearch: (text: string, fov: number) => SearchResult;
+  /** Official name of the position, when it was found by name. */
+  resolvedName?: string | null;
   onTryCase: () => void;
   /** Realistic mode: other wording, quick picks for the cached targets, no practice-case button. */
   realistic?: boolean;
@@ -21,15 +24,15 @@ interface Props {
 
 const STEPS: Exclude<LoadStep, 'done'>[] = ['finding', 'downloading', 'stacking'];
 
-export function ExploreGate({ initialText = '', initialFov = 0.1, loading, live, error, onSearch, onTryCase, realistic = false }: Props) {
+export function ExploreGate({ initialText = '', initialFov = 0.1, loading, live, resolvedName, error, onSearch, onTryCase, realistic = false }: Props) {
   const { t } = useI18n();
   const [text, setText] = useState(initialText);
   const [fov, setFov] = useState(initialFov);
-  const [formError, setFormError] = useState<string | null>(null);
+  const { busy, error: formError, submit: runSearch, clear } = useSearchSubmit((tx) => onSearch(tx, fov));
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    setFormError(onSearch(text, fov));
+    runSearch(text);
   }
 
   if (loading && loading !== 'done') {
@@ -38,6 +41,7 @@ export function ExploreGate({ initialText = '', initialFov = 0.1, loading, live,
       <main className="page page-narrow">
         <section className="card gate">
           <h1 className="t-heading">{realistic ? R.gateTitle : t('gate.preparing')}</h1>
+          {resolvedName && <p className="t-body" role="status">{t('resolve.found', { name: resolvedName })}</p>}
           <ol className="load-steps">
             {STEPS.map((s, i) => (
               <li key={s} className={i < idx ? 'done' : i === idx ? 'now' : ''}>
@@ -72,7 +76,7 @@ export function ExploreGate({ initialText = '', initialFov = 0.1, loading, live,
           id="where"
           type="text"
           value={text}
-          onChange={(e) => { setText(e.target.value); setFormError(null); }}
+          onChange={(e) => { setText(e.target.value); clear(); }}
           placeholder={t('gate.placeholder')}
           aria-describedby={formError || error ? 'gate-error' : undefined}
         />
@@ -90,12 +94,13 @@ export function ExploreGate({ initialText = '', initialFov = 0.1, loading, live,
             <p className="t-caption c-3">{R.gateHelp}</p>
             <div className="row wrap" role="group" aria-label={t('gate.cached')}>
               {Object.values(KNOWN).map((k) => (
-                <button key={k.id} type="button" className="btn btn-sm" onClick={() => setFormError(onSearch(k.name, fov))}>{k.name}</button>
+                <button key={k.id} type="button" className="btn btn-sm" onClick={() => runSearch(k.name)}>{k.name}</button>
               ))}
             </div>
           </>
         )}
-        {(formError || error) && <p id="gate-error" className="form-error" role="alert">{formError ? t('search.error') : error}</p>}
+        {busy && <p className="t-caption c-2" role="status">{t('resolve.busy', { name: busy })}</p>}
+        {(formError || error) && <p id="gate-error" className="form-error" role="alert">{formError ? t(searchErrorKey(formError)) : error}</p>}
         <button type="submit" className="btn btn-primary btn-lg">{t('gate.show')}</button>
       </form>
     </main>

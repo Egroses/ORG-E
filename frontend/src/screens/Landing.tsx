@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { searchErrorKey, useSearchSubmit, type SearchResult } from '../lib/useSearchSubmit';
 import type { SkyPatch, TargetId } from '../data/types';
 import { CASES, KNOWN } from '../data/catalog';
 import { SkyCanvas } from '../components/SkyCanvas';
@@ -15,7 +16,7 @@ interface Props {
   results: Progress['results'];
   onStart: () => void;
   onOpen: (id: TargetId) => void;
-  onJump: (text: string) => string | null;
+  onJump: (text: string) => SearchResult;
   onRealistic: () => void;
 }
 
@@ -23,7 +24,7 @@ export function Landing({ heroPatch, patches, results, onStart, onOpen, onJump, 
   const { t, tp } = useI18n();
   const [epoch, setEpoch] = useState(0);
   const [text, setText] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const { busy, error, submit: runSearch, clear } = useSearchSubmit(onJump);
 
   useEffect(() => {
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
@@ -33,7 +34,7 @@ export function Landing({ heroPatch, patches, results, onStart, onOpen, onJump, 
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    setError(onJump(text));
+    runSearch(text);
   }
 
   const hp = heroPatch;
@@ -60,13 +61,14 @@ export function Landing({ heroPatch, patches, results, onStart, onOpen, onJump, 
                 id="jump"
                 type="text"
                 value={text}
-                onChange={(ev) => { setText(ev.target.value); setError(null); }}
+                onChange={(ev) => { setText(ev.target.value); clear(); }}
                 placeholder={t('land.placeholder')}
                 aria-describedby={error ? 'jump-error' : undefined}
               />
               <button type="submit" aria-label={t('search.go')}><Icon name="arrow" size={16} /></button>
             </div>
-            {error && <p id="jump-error" className="form-error" role="alert">{t('search.error')}</p>}
+            {busy && <p className="t-caption c-2" role="status">{t('resolve.busy', { name: busy })}</p>}
+            {error && <p id="jump-error" className="form-error" role="alert">{t(searchErrorKey(error))}</p>}
           </form>
           <p className="t-caption c-3">{t('land.modes', { sub: R.landingExploreSub })}</p>
         </div>
