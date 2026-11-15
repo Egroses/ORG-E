@@ -8,6 +8,7 @@ import { ColorBar } from '../components/realistic/ColorBar';
 import {
   CandidatesSection, CatalogueSection, ChangesSection, DataSection, PhotometrySection, SourceSection, SpectrumSection,
 } from '../components/realistic/Findings';
+import '../components/use-visits.css';
 import { useCatalogue } from '../data/useCatalogue';
 import { useSpectrum } from '../data/spectrumApi';
 import { measureBest } from '../sky/measure';
@@ -75,7 +76,13 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
   const [lo, setLo] = useState(initial.lo);
   const [hi, setHi] = useState(initial.hi);
   const [quality, setQuality] = useState<QualityLayer>(initial.quality);
-  const [grid, setGrid] = useState(false);
+  const [grid, setGrid] = useState(initial.grid ?? false);
+  const [smooth, setSmooth] = useState(initial.smooth ?? false);
+  const [useSet, setUseSet] = useState<number[]>(() => {
+    const u = initial.use?.filter((e) => e < nEp);
+    return u && u.length ? u : patch.epochs.map((_, e) => e);
+  });
+  const [refPrev, setRefPrev] = useState(initial.refPrev ?? false);
   const [magnify, setMagnify] = useState(false);
   const [invert, setInvert] = useState(initial.invert ?? false);
   const [showCat, setShowCat] = useState(true);
@@ -89,10 +96,14 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
   useEffect(() => {
     onState({
       band: patch.bands[band].id, visit: epoch, ref: compare === 'diff' ? refEpoch : undefined, mode: compare,
-      stretch: stretchFn, lo, hi, group: initial.group, quality, speed, invert,
+      stretch: stretchFn, lo, hi, group: initial.group, quality, speed, invert, grid, smooth,
+      use: useSet.length === nEp ? undefined : useSet, refPrev: compare === 'diff' && refPrev ? true : undefined,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [band, epoch, refEpoch, compare, stretchFn, lo, hi, quality, speed, invert]);
+  }, [band, epoch, refEpoch, compare, stretchFn, lo, hi, quality, speed, invert, grid, smooth, useSet, refPrev]);
+
+  // The visit that Difference subtracts: a fixed one, or the one before the shown visit (the second, for the first).
+  const effRef = refPrev ? (epoch > 0 ? epoch - 1 : Math.min(1, nEp - 1)) : refEpoch;
 
   const hasShare = !!patch.flagShare;
   const physical = !!patch.noiseRefMJySr;
@@ -105,11 +116,18 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
   useEffect(() => {
     if (!playing || compare === 'stack') return;
     const id = window.setInterval(() => {
-      if (axis === 'epochs') setEpoch((e) => (e + 1) % nEp);
+      if (axis === 'epochs') {
+        // only the visits that are ticked take part (all of them when none is ticked)
+        setEpoch((e) => {
+          if (compare !== 'blink' || !useSet.length) return (e + 1) % nEp;
+          for (let k = 1; k <= nEp; k++) { const n = (e + k) % nEp; if (useSet.includes(n)) return n; }
+          return e;
+        });
+      }
       else setBand((b) => (b + 1) % nBands);
     }, 1000 / speed);
     return () => window.clearInterval(id);
-  }, [playing, compare, axis, speed, nEp, nBands]);
+  }, [playing, compare, axis, speed, nEp, nBands, useSet]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -137,7 +155,7 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
     [bandFrames, bandMasks, lo, hi, stretchFn, noiseRef],
   );
   const unit = patch.noiseRefMJySr ?? 1;
-  const diffScale = 6 * Math.max(patch.noise[epoch][band], patch.noise[refEpoch][band]);
+  const diffScale = 6 * Math.max(patch.noise[epoch][band], patch.noise[effRef][band]);
   const stackUsed = stackSet.filter((e) => !patch.missing?.[e]?.[band]);
 
   // ---------- measurements ----------
@@ -285,10 +303,11 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
             invert={invert}
             magnify={magnify}
             grid={grid}
+            smooth={smooth}
             stretchOverride={stretch}
             quality={hasShare ? quality : 'none'}
             physical={physical}
-            refEpoch={refEpoch}
+            refEpoch={effRef}
             stackEpochs={stackUsed}
             mark={mark}
             rings={rings}
@@ -303,7 +322,7 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
                 {compare === 'stack'
                   ? R.stackExposures(stackUsed.reduce((s, e) => s + (patch.imageCounts?.[e]?.[band] ?? 0), 0))
                   : missingHere ? R.noPhotoChip : R.exposuresN(countHere ?? ep.imageCount)}
-                {compare === 'diff' ? ` · ${R.diffMinus(patch.epochs[refEpoch].label)}` : ''}
+                {compare === 'diff' ? ` · ${R.diffMinus(patch.epochs[effRef].label)}` : ''}
               </span>
               <span>{compare === 'stack' ? t('r.visitsOf', { used: stackUsed.length, n: nEp }) : ep.dates}</span>
             </div>
@@ -355,7 +374,13 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
           {compare === 'diff' && (
             <label className="inline-select">
               <span className="t-caption c-3">{R.reference}</span>
-              <select className="select select-sm" value={refEpoch} onChange={(e) => setRefEpoch(Number(e.target.value))} aria-label={R.refTitle}>
+              <select
+                className="select select-sm"
+                value={refPrev ? 'prev' : refEpoch}
+                onChange={(e) => { if (e.target.value === 'prev') setRefPrev(true); else { setRefPrev(false); setRefEpoch(Number(e.target.value)); } }}
+                aria-label={R.refTitle}
+              >
+                <option value="prev">{t('r.refPrev')}</option>
                 {patch.epochs.map((e, i) => <option key={e.index} value={i} disabled={!!patch.missing?.[i]?.[band]}>{i + 1}: {e.label}</option>)}
               </select>
             </label>
@@ -365,6 +390,25 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
           </select>
         </div>
         <p className="mode-note t-caption c-3"><b>{R.modes[compare].name}.</b> {R.modes[compare].sub}</p>
+        {compare === 'blink' && nEp > 2 && (
+          <div className="bar use-visits" role="group" aria-label={t('r.useVisits')}>
+            <span className="t-micro c-3">{t('r.useVisits')}</span>
+            {patch.epochs.map((e, i) => (
+              <label key={e.index} className="use-visit">
+                <input
+                  type="checkbox"
+                  checked={useSet.includes(i)}
+                  aria-label={t('r.useVisit', { n: i + 1, label: e.label })}
+                  onChange={() => setUseSet((s) => {
+                    const next = s.includes(i) ? s.filter((x) => x !== i) : [...s, i].sort((a, b) => a - b);
+                    return next.length ? next : s;
+                  })}
+                />
+                <span>{e.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
 
         <div className="sheet-tabs seg" role="tablist" aria-label={t('r.panels')}>
           {sheetTabs.map((t) => (
@@ -407,6 +451,7 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
           <div className="layers ctl-group" role="group" aria-label={t('r.layersGroup')}>
             <button type="button" className="layer" aria-pressed={showCat} onClick={() => setShowCat((v) => !v)}><i className="mk gaia" />{R.catalogueMarks}</button>
             <button type="button" className="layer" aria-pressed={grid} onClick={() => setGrid((g) => !g)}>{R.grid}</button>
+            <button type="button" className="layer" aria-pressed={smooth} title={t('r.smoothTitle')} onClick={() => setSmooth((v) => !v)}>{t('r.smooth')}</button>
             <button type="button" className="layer" aria-pressed={magnify} onClick={() => setMagnify((m) => !m)}>{R.magnifier}</button>
             <button type="button" className="layer" aria-pressed={invert} onClick={() => setInvert((v) => !v)}>{R.invert}</button>
           </div>

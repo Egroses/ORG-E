@@ -52,21 +52,27 @@ export function EmbedView({ patch, initial, onState }: Props) {
   const [band, setBand] = useState(startBand);
   const [playing, setPlaying] = useState(false);
   const compare = initial.mode;
-  const refEpoch = clampEp(initial.ref, firstWithPhoto(startBand));
+  const fixedRef = clampEp(initial.ref, firstWithPhoto(startBand));
+  const useSet = initial.use?.filter((e) => e < nEp) ?? [];
   const speed = initial.speed ?? 1;
 
   // Keep the address in step with what is shown, so "copy the address" from the frame reopens the same picture.
   useEffect(() => {
-    onState({ ...initial, band: patch.bands[band].id, visit: epoch, ref: compare === 'diff' ? refEpoch : undefined });
+    onState({ ...initial, band: patch.bands[band].id, visit: epoch, ref: compare === 'diff' ? fixedRef : undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [band, epoch]);
 
   const cycling = playing && compare !== 'stack' && nEp > 1;
   useEffect(() => {
     if (!cycling) return;
-    const id = window.setInterval(() => setEpoch((e) => (e + 1) % nEp), 1000 / speed);
+    const id = window.setInterval(() => setEpoch((e) => {
+      if (compare !== 'blink' || !useSet.length) return (e + 1) % nEp;
+      for (let k = 1; k <= nEp; k++) { const n = (e + k) % nEp; if (useSet.includes(n)) return n; }
+      return e;
+    }), 1000 / speed);
     return () => window.clearInterval(id);
-  }, [cycling, speed, nEp]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cycling, speed, nEp, compare]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -85,6 +91,7 @@ export function EmbedView({ patch, initial, onState }: Props) {
     () => percentileStretch(bandFrames, bandMasks, initial.lo, initial.hi, initial.stretch, noiseRef),
     [bandFrames, bandMasks, initial.lo, initial.hi, initial.stretch, noiseRef],
   );
+  const refEpoch = initial.refPrev ? (epoch > 0 ? epoch - 1 : Math.min(1, nEp - 1)) : fixedRef;
   const stackUsed = patch.epochs.map((_, e) => e).filter((e) => !patch.missing?.[e]?.[band]);
   const bandObj = patch.bands[band];
   const ep = patch.epochs[epoch];
@@ -101,6 +108,8 @@ export function EmbedView({ patch, initial, onState }: Props) {
           band={band}
           mode={compare}
           invert={initial.invert}
+          grid={initial.grid}
+          smooth={initial.smooth}
           stretchOverride={stretch}
           quality={hasShare ? initial.quality : 'none'}
           physical={!!patch.noiseRefMJySr}

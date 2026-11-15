@@ -50,3 +50,18 @@ describe('iframeSnippet', () => {
     expect(iframeSnippet('https://x.org/#"><script>')).not.toContain('"><script>');
   });
 });
+
+describe('Realistic display options in the address', () => {
+  it('reads and writes grid, smooth, use and ref=prev', () => {
+    const s = parseRealistic(new URLSearchParams('mode=diff&ref=prev&grid=1&smooth=1&use=3,1,1'));
+    expect(s).toMatchObject({ grid: true, smooth: true, use: [0, 2], refPrev: true, mode: 'diff' });
+    const keys = Object.fromEntries(realisticPairs(s));
+    expect(keys).toMatchObject({ mode: 'diff', ref: 'prev', grid: '1', smooth: '1', use: '1,3' });
+  });
+  it('ignores a broken use list and writes nothing for defaults', () => {
+    expect(parseRealistic(new URLSearchParams('use=a,2')).use).toBeUndefined();
+    expect(parseRealistic(new URLSearchParams('use=0')).use).toBeUndefined();
+    const keys = realisticPairs({ ...DEFAULT_REALISTIC }).map(([k]) => k);
+    for (const k of ['grid', 'smooth', 'use']) expect(keys).not.toContain(k);
+  });
+});

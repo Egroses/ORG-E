@@ -25,6 +25,8 @@ interface Props {
   invert?: boolean;
   magnify?: boolean;
   grid?: boolean;
+  /** Bilinear smoothing instead of square pixels. */
+  smooth?: boolean;
   mark?: Pt | null;
   rings?: Ring[];
   path?: Pt[];
@@ -99,7 +101,7 @@ function placeLabels(items: { x: number; y: number; r: number; text: string }[],
 }
 
 export function SkyCanvas({
-  patch, epoch, band, mode = 'blink', detail = 'standard', invert = false, magnify = false, grid = false,
+  patch, epoch, band, mode = 'blink', detail = 'standard', invert = false, magnify = false, grid = false, smooth = false,
   mark = null, rings = [], path, pathColor = '#9aa4b2', focus = null, onTap, tapLabel, className = '', children,
   chrome = false, showFlags = false, brightness = 1, contrast = 1, stretch: stretchFn = 'asinh',
   stretchOverride, quality = 'none', physical = false, refEpoch = 0, stackEpochs,
@@ -325,7 +327,7 @@ export function SkyCanvas({
           ref={ref}
           width={size}
           height={size}
-          className="sky-canvas"
+          className={`sky-canvas${smooth ? ' smooth' : ''}`}
           style={brightness !== 1 || contrast !== 1 ? { filter: `brightness(${brightness}) contrast(${contrast})` } : undefined}
         />
         {grid && <div className="sky-grid" style={{ backgroundSize: `${100 / size}% ${100 / size}%` }} />}
