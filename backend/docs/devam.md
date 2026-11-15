@@ -78,6 +78,8 @@ Claude dokümanları:
 1. ~~Yeni veriyle yenileme komutu~~ **yapıldı (15 Kasım):** `python -m scripts.refresh` (`--check` yalnızca rapor).
    Sonuçlar manifest damgası saklıyor, önbellek değişince aynı kimlikle yeniden üretiliyor. Testler 71 passed.
 2. ~~`mock-error` farkı~~ **kapandı:** yeni frontend `/api/jobs` kullanmıyor; `/api/patch` hata yönetimi iki biçimi de karşılıyor.
+   **Canlı indirme AWS'ten (15 Kasım, `pipeline/s3.py`, `ARCHIVE_SOURCE=s3` varsayılan):** 3 dedektör 103 sn (eskiden ~15 dk).
+   Liste adımı hâlâ IRSA SIA'ya bağlı (15 Kasım öğleden sonra 502 veriyordu).
    **Tayf/katalog görevleri yapıldı (15 Kasım, `docs/backend-spectrum-catalog-tasks.md`):** `mode=102`, bayrak alanları,
    `/api/catwise`, Gaia `pm_snr`, indirme ilerlemesi. Belge: `backend/docs/spectrum-api.md`. Testler 83 passed + 3 ağ testi.
    **Frontend uç noktaları incelendi (15 Kasım):** Gaia alanları repoda (`app/gaia_fields/`, ESA kapalıyken GAVO'dan),
