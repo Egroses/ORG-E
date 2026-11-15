@@ -49,7 +49,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="SPHEREx Blink API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Sky Quest API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

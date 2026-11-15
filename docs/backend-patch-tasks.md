@@ -1,6 +1,6 @@
 # Backend: yapılacaklar (`/api/patch`, imaging, sunucu önbelleği)
 
-Bu liste backend sorumlusu içindir. Üç yeni parça var: `imaging/` (Yusuf'un çekirdeği + bizim kurallarımız), yeni bir
+Bu liste backend sorumlusu içindir. Üç yeni parça var: `imaging/` (hibrit çekirdek + bizim kurallarımız), yeni bir
 uç nokta (`GET /api/patch`) ve deep koleksiyonlar. Sözleşme: `docs/patch-api.md`.
 
 ## Neden değişiyor

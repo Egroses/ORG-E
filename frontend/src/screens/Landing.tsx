@@ -131,7 +131,6 @@ export function Landing({ heroPatch, patches, results, onStart, onOpen, onJump, 
 
       <footer className="footer">
         <span>{t('land.footer1')}</span>
-        <span>{t('land.footer2')}</span>
       </footer>
     </main>
   );

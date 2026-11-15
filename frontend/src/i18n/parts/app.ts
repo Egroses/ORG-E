@@ -89,7 +89,6 @@ export const en = {
   'land.s4': 'Check',
   'land.s4d': 'Compare your call with what astronomers already know.',
   'land.footer1': 'Sky Quest · NASA Space Apps 2026 · uses public SPHEREx data from IRSA',
-  'land.footer2': 'Layout adapted from YosefGul/spherex-blink (MIT)',
 
   // case board, results, report
   'board.title': 'Your cases',
@@ -482,7 +481,6 @@ export const tr: Record<keyof typeof en, string> = {
   'land.s4': 'Kontrol et',
   'land.s4d': 'Kararını gökbilimcilerin zaten bildikleriyle karşılaştır.',
   'land.footer1': 'Sky Quest · NASA Space Apps 2026 · IRSA’daki herkese açık SPHEREx verisini kullanır',
-  'land.footer2': 'Yerleşim YosefGul/spherex-blink (MIT) projesinden uyarlanmıştır',
 
   'board.title': 'Vakaların',
   'board.lead': 'Yanıtı bilinen beş alıştırma vakası. İstediğin sırayla çöz; her biri yeni bir araç tanıtır.',

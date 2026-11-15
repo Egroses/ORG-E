@@ -1,6 +1,5 @@
 // "Changes in this field": sources that moved, brightened or faded between the first and the last photo.
 //
-// Adapted from YosefGul/spherex-blink (discover.js: findChanges), MIT.
 
 import type { SkyPatch } from '../data/types';
 import { locate, maskedImage } from './measure';

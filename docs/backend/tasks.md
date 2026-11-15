@@ -6,7 +6,7 @@ Update this file as work progresses (`[x]` when done).
 ## Done (research phase)
 
 - [x] Challenge and all linked resources researched → `docs/challenge.md`, `docs/spherex-data.md`
-- [x] Teammate design doc reviewed; 5 additions agreed → `docs/design-v2.md` (waiting for Yusuf's confirmation of v2)
+- [x] Teammate design doc reviewed; 5 additions agreed → `docs/design-v2.md` (waiting for the design owner's confirmation of v2)
 
 ## Saturday, first hour
 

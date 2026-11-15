@@ -36,7 +36,7 @@ Four modules, data flows left to right: IRSA archive → `pipeline/` (cutouts + 
 
 1. Repo skeleton: folders, `LICENSE` (Apache-2.0 unless team decides otherwise), `.gitignore`, `README.md` stub.
 2. Write the API contract as Pydantic models in `backend/` (fields in `docs/design-v2.md`, including the v2 fields `data_release` and `display_range`).
-3. Mock server: fixed JSON + 3 PNGs (from the real Barnard's Star cutouts left over from Yusuf's data feasibility test; the files are on Yusuf's computer, ask him for them. If they are not available, fetch 3 cutouts, one per epoch, via the TAP query in `docs/spherex-data.md`), returned regardless of parameters. Includes `/api/jobs/mock-running` and `/api/jobs/mock-error`. Hand to frontend owner.
+3. Mock server: fixed JSON + 3 PNGs (from the real Barnard's Star cutouts left over from the data feasibility test; ask the team for the files. If they are not available, fetch 3 cutouts, one per epoch, via the TAP query in `docs/spherex-data.md`), returned regardless of parameters. Includes `/api/jobs/mock-running` and `/api/jobs/mock-error`. Hand to frontend owner.
 
 ## Key facts not to forget
 

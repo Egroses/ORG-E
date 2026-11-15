@@ -1,4 +1,4 @@
-"""SPHEREx Blink imaging: frame stacks, patches for the game, and their encoders.
+"""Sky Quest imaging: frame stacks, patches for the game, and their encoders.
 
 AI-assisted code (Claude Code).
 """

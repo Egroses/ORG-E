@@ -1,7 +1,6 @@
 /*
   Sky Quest design system: a white scientific interface with a game on top.
-  Tokens, type scale, hairline borders, panels and the light/dark themes are adapted from YosefGul/spherex-blink
-  (site.css, explore.css), MIT. Light is the default; the dark theme is only used after the visitor toggles it.
+  Tokens, type scale, hairline borders, panels and the light/dark themes live here. Light is the default; the dark theme is only used after the visitor toggles it.
   The sky pictures themselves stay dark in both themes (that is what a telescope image looks like).
 */
 :root {
@@ -80,7 +79,7 @@ a { color: inherit; text-decoration: none; }
 .mono { font-family: var(--mono); font-size: 12px; }
 .muted { color: var(--text-3); }
 
-/* ---------- type scale (Yusuf's .t-* set) ---------- */
+/* ---------- type scale (.t-* set) ---------- */
 .t-display { font: 600 48px/1.08 var(--sans); letter-spacing: -0.025em; }
 .t-heading { font: 600 28px/1.15 var(--sans); letter-spacing: -0.02em; }
 .t-title { font: 600 18px/1.3 var(--sans); letter-spacing: -0.01em; }

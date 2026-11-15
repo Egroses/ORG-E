@@ -30,8 +30,8 @@ payload is north-up, east-left, as the contract says. `imaging.patch.decode_fram
 ## Design choices
 
 **"V2 hybrid".** Our prototype compared three pipelines on the cached data
-(`E:\nasa\imaging-proto`): the current backend, the MIT-licensed `spherex-blink` core, and a hybrid. The hybrid
-uses spherex-blink's pure-numpy WCS (`tanwcs.py`), bilinear resampling and sigma-clipped-mean stacking,
+(`E:\nasa\imaging-proto`): the current backend, an alternative pure-numpy core, and a hybrid. The hybrid
+uses a pure-numpy WCS (`tanwcs.py`), bilinear resampling and sigma-clipped-mean stacking,
 with our preprocessing: `IMAGE - ZODI`, bad-pixel mask with saturated cores kept, sigma-clipped median
 background. In that prototype it gave about 10 % more aperture SNR than the backend on WISE 0855 and
 recovered Barnard's Star proper motion within 1 %. The numbers from this package are in the validation section below.

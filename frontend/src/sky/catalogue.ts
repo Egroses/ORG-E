@@ -1,6 +1,5 @@
 // Catalogue check: where should known stars be in each photo, and does the marked dot match one?
 //
-// Proper-motion propagation adapted from YosefGul/spherex-blink (discover.js: nearCats / catalogueCheck), MIT.
 
 import type { KnownObject, SkyPatch } from '../data/types';
 import { KNOWN } from '../data/catalog';

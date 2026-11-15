@@ -92,8 +92,7 @@ Yanıt (öneri):
   "warnings": []                                    // düz dilli metinler
 }
 ```
-Yöntem (Yusuf'un prototipinin fikri: `external/spherex-blink/backend/spx/wave.py`, `wave_grids.json`; MIT, okuyup uyarlayabilirsin,
-`NOTICE.md`'ye ekle):
+Yöntem (fikir: dedektör başına sabit dalga boyu ızgarası; kanal sınırlarını nominal aralıktan kendin üret):
 - [ ] Dedektör başına 17 sabit dalga boyu kanalı (6 x 17 = 102). Kanal sınırları dedektörün nominal dalga boyu aralığından
       eşit bölünür (nominal ve yaklaşık, belgede söyle).
 - [ ] Her poz için hedef konumunda açıklık fotometrisi: mevcut `measure()` mantığı, yarıçap `aperture`, 4–7 piksel halkasından

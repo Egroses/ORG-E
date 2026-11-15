@@ -2,8 +2,7 @@
 
 Follows docs/wdd-goruntu-isleme.md ("V2 hybrid"): our own preprocessing (IMAGE - ZODI, bad-pixel
 mask with saturated cores kept, sigma-clipped median background) plus the pure-numpy TAN-SIP WCS,
-bilinear resampling and sigma-clipped-mean stacking adapted from YosefGul/spherex-blink (MIT,
-see NOTICE.md).
+bilinear resampling and sigma-clipped-mean stacking.
 
 Array convention inside this module: FITS order, row 0 = south, column 0 = east (grid WCS has
 cdelt1 < 0). Only the encoders flip rows for display.
@@ -238,7 +237,7 @@ def _nanmedian0(cube):
 
 def clipped_mean(cube, sigma=3.0, iters=2):
     """Per-pixel sigma-clipped mean along axis 0, ignoring NaN (clipping by MAD about the median,
-    as in YosefGul/spherex-blink `clipped_mean_stack`, reimplemented for speed)."""
+    implemented for speed)."""
     shape = cube.shape[1:]
     cube = np.array(cube, dtype=np.float32).reshape(len(cube), -1)
     with warnings.catch_warnings():

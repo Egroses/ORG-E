@@ -1,6 +1,6 @@
 # Servis ve Analiz: İş Tasarım Dokümanı (v2)
 
-Original by Yusuf (2026-11-14), v2 additions by Emirhan + Claude (marked **[v2]**). This is the agreed design for the backend ("Servis ve Analiz") role. Online version: https://claude.ai/artifact/VWRP7G9qrPjBYt6WywEzQv
+Original by the team (2026-11-14), v2 additions by Emirhan + Claude (marked **[v2]**). This is the agreed design for the backend ("Servis ve Analiz") role. Online version: https://claude.ai/artifact/VWRP7G9qrPjBYt6WywEzQv
 
 ## Bu sürümde neler değişti
 
@@ -110,7 +110,7 @@ Sözleşme ilk yarım saatte yazılır, beş kişi onaylar ve sonradan habersiz 
 
 Tamamlanmış iş yanıtı: `"id": "mock"`, `"status": "done"`, Barnard's Star'ın ölçülen üç gözlem dönemi: 2025-08-15 – 2025-10-01 (n_images 20, flagged 0.03), 2026-03-11 – 2026-05-05 (21, 0.02), 2026-08-16 – 2026-09-22 (17, 0.04); detektör 6, 4,41–5,00 µm. Poz sayıları ve bayrak oranları uydurmadır. **[v2]** Sahte yanıtta `data_release` ve `display_range` de bulunur.
 
-**PNG kareler.** Gerçek Barnard's Star kesitleri Yusuf'un veri testinden kalma, onun bilgisayarında (orijinal dokümanda geçen yol: `E:\nasa\feasibility\data\cutouts\barnard`); Yusuf'tan istenir. Yoksa `docs/spherex-data.md`'deki TAP sorgusuyla her dönemden bir kesit indirilir; üç dönemden birer tanesi PNG'ye çevrilir. **[v2]** Üç PNG de ortak min/max ile üretilir.
+**PNG kareler.** Gerçek Barnard's Star kesitleri ilk veri fizibilite testinden kalma; ekipten istenir. Yoksa `docs/spherex-data.md`'deki TAP sorgusuyla her dönemden bir kesit indirilir; üç dönemden birer tanesi PNG'ye çevrilir. **[v2]** Üç PNG de ortak min/max ile üretilir.
 
 **Zor durumlar:**
 

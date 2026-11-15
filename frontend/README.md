@@ -56,7 +56,7 @@ Catalogue values in `src/data/catalog.ts` are approximate; verify against SIMBAD
 ## Design system and layout (white scientific redesign)
 
 The interface is a clean white scientific tool with the game on top. Tokens, type scale, hairline borders and panel
-proportions are adapted from YosefGul/spherex-blink (MIT); all of it lives in `src/index.css`.
+proportions all live in `src/index.css`.
 
 - **Themes.** Light is the default (white surfaces, grey page, one teal-blue accent, status colours for catalogue/measure/flags,
   text contrast of at least 4.5:1). A dark theme exists behind the moon/sun button in the top bar; the choice is stored in
@@ -91,8 +91,7 @@ src/
 
 ## Merged interface: what changed
 
-Sky Quest now combines its game flow with the measurement tools and design approach of the SPHEREx Blink prototype
-(adapted from YosefGul/spherex-blink, MIT; credited in code comments).
+Sky Quest now combines its game flow with the measurement tools and design approach of a blink-comparison viewer.
 
 - **Real data provider** (`src/data/realProvider.ts`, `decode.ts`): reads `GET /api/patch` (contract in `docs/patch-api.md`),
   polls on HTTP 202 every 2 s (gives up after about 3 minutes with a friendly message) and converts to `SkyPatch`

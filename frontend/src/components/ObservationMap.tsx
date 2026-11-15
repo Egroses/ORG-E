@@ -7,7 +7,6 @@ import { num } from '../i18n';
 import { useI18n } from '../i18n/react';
 
 // "Which photos do we have?": one row per band, one column per visit.
-// Layout idea adapted from YosefGul/spherex-blink (the bands x visits navigator), MIT.
 
 function Thumb({ patch, e, b, stretch }: { patch: SkyPatch; e: number; b: number; stretch: Stretch }) {
   const ref = useRef<HTMLCanvasElement>(null);

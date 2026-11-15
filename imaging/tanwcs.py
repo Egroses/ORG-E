@@ -1,6 +1,4 @@
-# Adapted from YosefGul/spherex-blink (backend/spx/tanwcs.py), MIT License,
-# Copyright (c) 2026 SPHEREx Blink contributors. See imaging/NOTICE.md. Logic unchanged, except that the SIP
-# polynomial reuses powers of u, v and the inversion stops once it has converged (speed only).
+# The SIP polynomial reuses powers of u, v and the inversion stops once it has converged (speed only).
 """Minimal TAN / TAN-SIP world coordinate system in pure numpy.
 
 Covers what SPHEREx spectral images need (gnomonic projection, CD or PC matrix, SIP

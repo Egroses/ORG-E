@@ -1,6 +1,5 @@
 // "Measure it": find a marked source in every epoch and see how far it moved.
 //
-// Adapted from YosefGul/spherex-blink (discover.js: centroid, holeAt, sourceHere, locate, measureMotion), MIT.
 // Ported to TypeScript on SkyPatch arrays. Orientation: row 0 = north, column 0 = east, so a source with
 // positive Dec proper motion moves toward SMALLER row numbers.
 
