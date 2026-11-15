@@ -10,9 +10,19 @@ export const percentText = (n: string) => t('fmt.percent', { n });
 
 export const pct1 = (v: number) => percentText(num(v * 100, v > 0 && v < 0.001 ? 2 : v < 0.1 ? 1 : 0));
 
-/** Link that opens the same spot in Aladin Lite (CDS sky atlas), with a field 1.5 times ours so the surroundings show. */
+/**
+ * Sky survey shown in Aladin Lite: DSS2 colour from IRSA's mirror of the CDS HiPS. Aladin's own default list points at the CDS server
+ * (answered 404) and at ESA's mirror (timed out) on 15 Nov 2026, so the page stayed black; this address answers.
+ */
+export const ALADIN_HIPS = 'https://irsa.ipac.caltech.edu/data/hips/CDS/DSS2/color';
+
+/**
+ * Link that opens the same spot in Aladin Lite (CDS sky atlas), with a field 1.5 times ours so the surroundings show.
+ * Aladin Lite reads `ra`, `dec`, `fov` (degrees) and `hips` (the address of a HiPS survey); a `target=` parameter is ignored
+ * and the page opens at a random position.
+ */
 export function aladinUrl(ra: number, dec: number, fovDeg: number): string {
-  return `https://aladin.cds.unistra.fr/AladinLite/?target=${ra.toFixed(5)}%20${dec >= 0 ? '%2B' : ''}${dec.toFixed(5)}&fov=${(fovDeg * 1.5).toFixed(3)}&survey=${encodeURIComponent('CDS/P/allWISE/color')}`;
+  return `https://aladin.cds.unistra.fr/AladinLite/?ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&fov=${(fovDeg * 1.5).toFixed(3)}&hips=${encodeURIComponent(ALADIN_HIPS)}`;
 }
 
 /**

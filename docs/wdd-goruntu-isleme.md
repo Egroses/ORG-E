@@ -435,7 +435,7 @@ Bu doküman tasarım aşamasında yazıldı. `main`'de (396df1a) görüntü işl
 - 102 kanalın sınırları **nominal** (resmî SPHEREx kanal sınırları değil).
 - 0,25 dereceden geniş alanlar yok.
 - Zodyak katmanı için uç nokta yok (zodyak modeli yalnızca her karenin arka plan çıkarmasında kullanılır).
-- Aladin `survey` parametresi yok sayılıyor (DSS2 renkli ile açılır); WiseView bağlantısı eklenmedi.
+- Aladin bağlantısı `ra`, `dec`, `fov`, `hips` ile veriliyor (IRSA aynasındaki DSS2 renkli); WiseView bağlantısı eklenmedi.
 - Tam erişilebilirlik denetimi yapılmadı.
 - `imaging/README.md`'ye göre doğrulanmayanlar: canlı (önbellekte olmayan) veri, beş hedef dışındaki SPHEREx verisi, 1, 3 ve 5
   numaralı dedektörlerle `imaging` testleri (hiç çalıştırılmadı; backend'in 102 kanallı tayfı ve gerçekçi mod bu dedektörleri kullanır,

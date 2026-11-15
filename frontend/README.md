@@ -262,6 +262,5 @@ Contrast of the new buttons was measured in the dark theme (text against its bac
 `npm run lint`, `npx vitest run` and `npm run build` pass. This is a list of what was looked at, not a claim of WCAG conformance. Not checked: real screen readers, Safari and Firefox,
 touch pinch-zoom (touch uses the zoom buttons and one-finger drag when zoomed), a live download that really takes 15 minutes.
 
-Aladin Lite: the page opened with `target=` and `fov=` (it loads the right sky tiles and field), but it ignored `survey=` (every survey id tried, including `CDS/P/allWISE/color`,
-`CDS/P/AllWISE/color`, `P/allWISE/color` and the HiPS address) and always opened on DSS2 colour; the visitor can pick AllWISE in its own survey menu.
+Aladin Lite (checked on 15 Nov 2026): the page ignores `target=` and opens at a random position; it reads `ra`, `dec`, `fov` and `hips`. Its own survey list pointed at the CDS server (404) and ESA's mirror (timed out), so the page stayed black. The link therefore gives `ra`, `dec`, `fov` and `hips=` the DSS2 colour survey from IRSA's mirror (`https://irsa.ipac.caltech.edu/data/hips/CDS/DSS2/color`; properties and tiles answered 200). Other surveys in Aladin's own menu may still fail while the CDS server is down.
 

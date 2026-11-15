@@ -497,7 +497,7 @@ geçerlidir (örneğin arayüz artık Türkçe de var, `embed=1` yapıldı, ger�
   tam örtüşmez.
 - 0,25 dereceden geniş alanlar yok (sunucu `fov > 0,25` için `400 bad_input` döner).
 - Zodyak ışığı katmanı için uç nokta yok.
-- Aladin `survey` parametresi **yok sayılıyor**: sayfa her zaman DSS2 renkli ile açılıyor (AllWISE'ı ziyaretçi kendi menüsünden seçer).
+- Aladin bağlantısı `ra`, `dec`, `fov` ve `hips` ile veriliyor (`target=` yok sayılıyor, sayfa rastgele konumda açılıyordu); harita IRSA aynasındaki DSS2 renkli (CDS sunucusu 404, ESA aynası zaman aşımı veriyordu). Aladin'in kendi menüsündeki diğer haritalar CDS sunucusu kapalıyken yine yüklenmeyebilir.
 - WiseView bağlantısı eklenmedi.
 - Tam erişilebilirlik denetimi yapılmadı (elle ve testlerle bakılanlar `frontend/README.md`'de; WCAG uyumu iddia edilmez).
 - Gerçek ekran okuyucu, Safari ve Firefox, dokunmatik iki parmakla yakınlaştırma ve gerçekten 15 dakika süren bir canlı indirme
