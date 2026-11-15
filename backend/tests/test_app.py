@@ -56,3 +56,12 @@ def test_nan_becomes_internal_error_json():
 
     r = TestClient(test_app, raise_server_exceptions=False).get("/nan")
     assert r.status_code == 500 and r.json()["error"]["code"] == "internal_error"
+
+
+def test_archive_message_is_short_and_readable():
+    from app.errors import archive_message
+    page = ("Unable to access the capabilities endpoint at:\n- https://irsa.ipac.caltech.edu/SIA/capabilities: "
+            "HTTP Code: 502 Proxy Error Response body: <!DOCTYPE HTML><html><body><h1>Proxy Error</h1></body></html>")
+    message = archive_message(Exception(page))
+    assert "HTTP 502" in message and "<" not in message and len(message) < 200
+    assert archive_message(TimeoutError("read timed out")) == "The SPHEREx archive did not answer: read timed out"

@@ -20,7 +20,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 
 from . import config
-from .errors import ApiError
+from .errors import ApiError, archive_message
 from .jobs import LIVE_OFF_MESSAGE, _records_from_manifest, data_stamp
 from .targets import TARGETS
 
@@ -228,7 +228,7 @@ class PatchManager:
             stamp = data_stamp(unit_dir(params, d) for d in params["dets"])
         except Exception as exc:  # archive errors come in many types (HTTP, DAL, timeouts)
             log.exception("cutout search failed for patch %s", job_id)
-            return self._fail(job_id, "archive_unavailable", f"The SPHEREx archive did not answer: {exc}")
+            return self._fail(job_id, "archive_unavailable", archive_message(exc))
         if not any(records.values()):
             return self._fail(job_id, "no_coverage", "SPHEREx has no images of this position in these detectors yet.")
 
