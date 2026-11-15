@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 
 from app import config
 from app.main import app
-from app.photometry import position_at
+from app.photometry import CHANNELS_PER_DETECTOR, channel_of, channel_spectrum, position_at
 from app.targets import TARGETS_BY_KEY
 
 client = TestClient(app)
@@ -37,7 +37,9 @@ def test_barnard_spectrum():
     d6 = [p for p in points if p["detector"] == 6]  # cached for every setup of the cache
     assert len(d6) >= 50 and all(4.3 < p["wavelength_um"] < 5.1 for p in d6)
     assert min(p["flux_mjy"] for p in d6) > 1000  # a few Jy at 4.5 micron
-    assert all(p["flagged"] for p in d6)  # saturated core
+    # saturated core: every point a lower limit, but only a minority has a hard bad-pixel bit
+    assert all(p["saturated"] and p["lower_limit"] for p in d6)
+    assert 0 < sum(p["flagged"] for p in points) < len(points) / 3
 
 
 @needs_cache
@@ -59,3 +61,47 @@ def test_lightcurve_sorted_and_band_filter():
     assert mjds == sorted(mjds)
     other = client.get("/api/lightcurve", params={**params, "detector": 1})
     assert other.json()["error"]["code"] == "no_coverage"
+
+
+def point(detector, wavelength, flux, err=1.0, flagged=False, saturated=False):
+    return {"detector": detector, "wavelength_um": wavelength, "flux_mjy": flux, "err_mjy": err,
+            "flagged": flagged, "saturated": saturated, "lower_limit": saturated}
+
+
+def test_channels_cover_each_detector_in_17_steps():
+    assert channel_of(6, 4.41) == 0 and channel_of(6, 5.009) == CHANNELS_PER_DETECTOR - 1
+    assert channel_of(6, 4.0) == 0 and channel_of(6, 6.0) == CHANNELS_PER_DETECTOR - 1  # clamped
+    assert [channel_of(1, w) for w in (0.75, 0.9, 1.1)] == sorted(channel_of(1, w) for w in (0.75, 0.9, 1.1))
+
+
+def test_channel_median_skips_hard_flags_and_reports_empty_channels():
+    pts = [point(6, 4.42, 10), point(6, 4.42, 12), point(6, 4.42, 99, flagged=True), point(6, 4.42, 14, saturated=True)]
+    channels = channel_spectrum(pts)
+    assert len(channels) == 102
+    first = channels[5 * CHANNELS_PER_DETECTOR]
+    assert (first["detector"], first["index"], first["flux_mjy"]) == (6, 0, 12.0)
+    assert first["n_exposures"] == 3 and first["n_skipped"] == 1 and first["saturated"] and first["lower_limit"]
+    assert abs(first["err_mjy"] - 1.2533 * 3 ** 0.5 / 3) < 1e-3
+    empty = channels[0]
+    assert empty["flux_mjy"] is None and empty["err_mjy"] is None and empty["n_exposures"] == 0
+
+
+def test_bad_aperture():
+    r = client.get("/api/spectrum", params={"ra": 10, "dec": 10, "aperture": 5})
+    assert r.status_code == 400 and r.json()["error"]["code"] == "bad_input"
+
+
+@needs_cache
+def test_barnard_102_channels_and_apertures():
+    base = {"ra": BARNARD.ra, "dec": BARNARD.dec, "pmra": BARNARD.pmra, "pmdec": BARNARD.pmdec, "mode": "102"}
+    body = client.get("/api/spectrum", params=base).json()
+    assert len(body["channels"]) == 102 and body["aperture_px"] == 2 and body["unit"] == "mJy"
+    d6 = [c for c in body["channels"] if c["detector"] == 6]
+    assert [c["index"] for c in d6] == list(range(17)) and all(c["flux_mjy"] for c in d6)
+    waves = [c["wavelength_um"] for c in d6]
+    assert waves == sorted(waves) and 4.4 < waves[0] and waves[-1] < 5.01
+    assert body["warnings"]  # saturated
+    small = client.get("/api/spectrum", params={**base, "aperture": 1}).json()["channels"]
+    total = lambda chs: sum(c["flux_mjy"] or 0 for c in chs if c["detector"] == 6)
+    assert total(small) < total(d6)  # a larger aperture gathers more light
+    assert isinstance(client.get("/api/spectrum", params={k: v for k, v in base.items() if k != "mode"}).json(), list)

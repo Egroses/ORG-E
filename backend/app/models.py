@@ -120,7 +120,33 @@ class SpectrumPoint(BaseModel):
     err_mjy: float
     mjd: float
     detector: int
-    flagged: bool
+    flagged: bool = Field(description="a hard bad-pixel bit (NONFUNC, HOT, COLD, PERSIST, OUTLIER, STREAK, "
+                                      "SNOWBALL, MISSING_DATA, PHANMISS) in the aperture")
+    saturated: bool = Field(False, description="OVERFLOW, SUR_ERROR or BLOOM in the aperture")
+    masked_px: int = Field(0, description="aperture pixels with no value (NaN), left out of the sum")
+    flag_names: List[str] = Field([], description="every flag bit set in the aperture (FULLSAMPLE, SOURCE not listed)")
+    lower_limit: bool = Field(False, description="saturated or masked pixels: the true flux may be higher")
+
+
+class SpectrumChannel(BaseModel):
+    detector: int
+    index: int = Field(description="0-16 within the detector")
+    wavelength_um: float = Field(description="channel centre (geometric mean of its edges)")
+    wavelength_range_um: List[float] = Field(min_length=2, max_length=2)
+    flux_mjy: Optional[float] = Field(None, description="median over the usable exposures; null when none")
+    err_mjy: Optional[float] = None
+    n_exposures: int = Field(description="exposures in the median")
+    n_skipped: int = Field(description="exposures left out for a hard bad-pixel bit")
+    saturated: bool
+    lower_limit: bool
+
+
+class ChannelSpectrum(BaseModel):
+    center: SkyPosition
+    aperture_px: float
+    unit: str = "mJy"
+    channels: List[SpectrumChannel] = Field(description="6 detectors x 17 channels = 102")
+    warnings: List[str] = []
 
 
 class GaiaSource(BaseModel):
@@ -130,3 +156,15 @@ class GaiaSource(BaseModel):
     gmag: Optional[float] = None
     pmra: Optional[float] = None
     pmdec: Optional[float] = None
+    pm_snr: Optional[float] = Field(None, description="proper motion / its error; null when the errors are unknown")
+
+
+class CatwiseSource(BaseModel):
+    name: str
+    ra: float = Field(description="propagated to epoch 2026.0")
+    dec: float
+    w1: Optional[float] = Field(None, description="W1 (3.4 micron) magnitude, w1mpro")
+    w2: Optional[float] = Field(None, description="W2 (4.6 micron) magnitude, w2mpro")
+    pmra: Optional[float] = Field(None, description="mas/yr (CatWISE gives arcsec/yr)")
+    pmdec: Optional[float] = None
+    pm_snr: Optional[float] = None
