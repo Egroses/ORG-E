@@ -111,16 +111,39 @@ describe('provider fallback order', () => {
     expect(g.savedCopy).toBeTruthy();
     expect((await provider.getPatch(realistic)).savedCopy).toBeTruthy();
   });
-  it('no static file: Game falls back to mock, strict never does', async () => {
+  it('no static file: a clear noService / server error, NEVER mock (Game and strict alike)', async () => {
     net({ live: 'down', withStatic: false });
     const { provider } = await import('./provider');
-    expect((await provider.getPatch(game)).source).toBe('mock');
+    await expect(provider.getPatch(game)).rejects.toMatchObject({ kind: 'noService' });
     await expect(provider.getPatch(realistic)).rejects.toMatchObject({ kind: 'noService' });
     net({ live: 'failed', withStatic: false });
     vi.resetModules();
     const m = await import('./provider');
-    expect((await m.provider.getPatch(game)).source).toBe('mock');
+    await expect(m.provider.getPatch(game)).rejects.toMatchObject({ kind: 'server' });
     await expect(m.provider.getPatch(realistic)).rejects.toMatchObject({ kind: 'server' });
+    net({ live: 'down', withStatic: false });
+    vi.resetModules();
+    const { errorText, DataError } = await import('./errors');
+    const err = await (await import('./provider')).provider.getPatch(game).catch((e) => e);
+    expect(err).toBeInstanceOf(DataError);
+    const i18n = await import('../i18n');
+    i18n.setLang('en', false);
+    expect(errorText(err)).toMatch(/no saved copy/);
+    i18n.setLang('tr', false);
+    expect(errorText(err)).toMatch(/kayıtlı kopya yok/);
+    i18n.setLang('en', false);
+  });
+  it('?data=mock is the only way to get demo data, and it is flagged', async () => {
+    net({ live: 'ok' });
+    vi.stubGlobal('window', { location: { search: '?data=mock' } });
+    const m = await import('./provider');
+    expect(m.isMockForced()).toBe(true);
+    expect(m.getDataMode()).toBe('mock');
+    expect((await m.provider.getPatch(game)).source).toBe('mock');
+    expect((await m.provider.getPatch(realistic)).source).toBe('mock');
+    vi.stubGlobal('window', { location: { search: '' } });
+    expect(m.isMockForced()).toBe(false);
+    expect(m.getDataMode()).toBe('real');
   });
   it('non-cached coordinates stay errors', async () => {
     net({ live: 'failed' });

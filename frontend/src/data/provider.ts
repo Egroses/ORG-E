@@ -1,16 +1,19 @@
 import type { PatchRequest, SkyDataProvider, SkyPatch, TargetId } from './types';
 import { mockProvider } from './mockProvider';
 import { GROUPINGS, type GroupId } from './catalog';
-import { apiIsUp, createRealProvider } from './realProvider';
+import { createRealProvider } from './realProvider';
 import { DataError } from './errors';
 import { getStaticPatch } from './staticProvider';
 
 export type DataMode = 'real' | 'mock';
 
 /**
- * Chooses the data source once, at startup:
- *  - `?data=mock` in the address forces the demo data;
- *  - otherwise GET {VITE_API_BASE}/api/health decides: it answers -> real data, it does not -> demo data.
+ * Where patch data comes from, in this order, with no exception:
+ *   1. the live backend (GET /api/patch);
+ *   2. the saved real copy shipped with the app (public/static, see staticProvider.ts);
+ *   3. an honest error (DataError 'noService' when the service is unreachable, or the service's own error).
+ * Demo data is NEVER a fallback. The only way to get it is the developer switch `?data=mock` in the address,
+ * and while it is on the app shows a full-width banner (see DemoBanner).
  */
 function forcedMock() {
   try {
@@ -20,38 +23,24 @@ function forcedMock() {
   }
 }
 
-let mode: DataMode = 'mock';
 const real = createRealProvider();
 
-export const dataModeReady: Promise<DataMode> = (forcedMock() ? Promise.resolve(false) : apiIsUp()).then((up) => {
-  mode = up ? 'real' : 'mock';
-  return mode;
-});
-
-export const getDataMode = () => mode;
 export const isMockForced = forcedMock;
+/** 'mock' only while the developer switch is on. */
+export const getDataMode = (): DataMode => (forcedMock() ? 'mock' : 'real');
 
 export const provider: SkyDataProvider = {
   async getPatch(req, onStep) {
-    await dataModeReady;
-    if (mode === 'mock') {
-      if (forcedMock()) return mockProvider.getPatch(req, onStep);
-      // The service is down: the saved copy of a practice target, if there is one, is real data.
-      const saved = await getStaticPatch(req);
-      if (saved) { onStep?.('done'); return saved; }
-      // Realistic mode shows demo data only when it was asked for with ?data=mock, never because the service is down.
-      if (req.strict) throw new DataError('noService');
-      return mockProvider.getPatch(req, onStep);
-    }
+    if (forcedMock()) return mockProvider.getPatch(req, onStep);
     try {
       return await real.getPatch(req, onStep);
     } catch (e) {
-      // The live answer failed (network, 5xx, "failed"): try the saved copy of the target, then (Game only) demo data.
+      // Live answer failed (network, 5xx, "failed"): the saved real copy of the target, if there is one.
       const saved = await getStaticPatch(req);
       if (saved) { onStep?.('done'); return saved; }
-      // The five practice cases must always open: fall back to demo data (the "Demo data" chip then shows).
-      if (req.cached && !req.strict) return mockProvider.getPatch(req, onStep);
-      throw e;
+      // No saved copy for this view: say so. A service that answered with its own error keeps that error.
+      if (e instanceof DataError && e.kind !== 'unreachable') throw e;
+      throw new DataError('noService');
     }
   },
 };

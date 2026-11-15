@@ -3,10 +3,12 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { I18nProvider } from './i18n/Provider'
+import { DemoBanner } from './components/DemoBanner'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <I18nProvider>
+      <DemoBanner />
       <App />
     </I18nProvider>
   </StrictMode>,

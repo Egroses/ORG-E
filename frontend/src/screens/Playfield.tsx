@@ -376,7 +376,6 @@ export function Playfield({ mode, patch, caseDef, onReveal, onSaveObservation, o
               <span>{compare === 'stack' ? t('pf.allVisits') : ep.dates}</span>
             </div>
             <span className="sky-band" style={{ borderColor: bandObj.color }}><i style={{ background: bandObj.color }} />{bandObj.name} {bandObj.label}</span>
-            {patch.source === 'mock' && <span className="sky-chip sky-chip-bottom">{t('r.demoChip')}</span>}
             {savedCopyText(patch) && <span className="sky-chip sky-chip-bottom sky-chip-saved" role="status">{savedCopyText(patch)}</span>}
             {missingHere && <span className="sky-chip sky-chip-nodata">{t('pf.noPhotoBand')}</span>}
           </SkyCanvas>

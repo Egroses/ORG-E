@@ -393,7 +393,7 @@ export const en = {
   'err.unreachable': 'Could not reach the sky data service.',
   'err.incomplete': 'The patch answer is incomplete.',
   'err.noBands': 'The patch has none of the six SPHEREx bands.',
-  'err.noService': 'The sky data service is not reachable, so no real SPHEREx data can be shown.',
+  'err.noService': 'The sky data service is not available right now, and there is no saved copy for this view. No real SPHEREx data can be shown, and we will not show made-up data instead. Please try again later.',
 } as const;
 
 export const tr: Record<keyof typeof en, string> = {
@@ -781,5 +781,5 @@ export const tr: Record<keyof typeof en, string> = {
   'err.unreachable': 'Gökyüzü veri servisine ulaşılamadı.',
   'err.incomplete': 'Alan yanıtı eksik.',
   'err.noBands': 'Alanda altı SPHEREx bandından hiçbiri yok.',
-  'err.noService': 'Gökyüzü veri servisine ulaşılamıyor, bu yüzden gerçek SPHEREx verisi gösterilemiyor.',
+  'err.noService': 'Gökyüzü veri servisi şu an kullanılamıyor ve bu görünüm için kayıtlı kopya yok. Gerçek SPHEREx verisi gösterilemiyor; yerine uydurma veri göstermeyeceğiz. Lütfen daha sonra yeniden dene.',
 };
