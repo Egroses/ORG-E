@@ -17,7 +17,7 @@ import { CaseBoard } from './screens/CaseBoard';
 import { Playfield } from './screens/Playfield';
 import { RealisticTool } from './screens/RealisticTool';
 import {
-  DEFAULT_REALISTIC, loadViewMode, parseRealistic, parseViewMode, realisticPairs, saveViewMode, type RealisticState, type ViewMode,
+  DEFAULT_REALISTIC, loadViewMode, parseEmbed, parseRealistic, parseViewMode, realisticPairs, saveViewMode, type RealisticState, type ViewMode,
 } from './state/viewState';
 import { R } from './ui/realisticText';
 import { errorText } from './data/errors';
@@ -26,6 +26,7 @@ import { useI18n } from './i18n/react';
 import { Reveal } from './screens/Reveal';
 import { FieldReport } from './screens/FieldReport';
 import { ExploreGate } from './screens/ExploreGate';
+import { EmbedStatus, EmbedView } from './screens/EmbedView';
 import { Glossary } from './components/Glossary';
 import { Tour } from './components/Tour';
 import { tourSeen } from './state/tour';
@@ -41,7 +42,7 @@ type Route =
   | { name: 'case'; id: TargetId }
   | { name: 'reveal'; id: TargetId }
   | { name: 'report' }
-  | { name: 'explore'; req: PatchRequest | null; view: ViewMode; rs: RealisticState };
+  | { name: 'explore'; req: PatchRequest | null; view: ViewMode; rs: RealisticState; embed?: boolean };
 
 interface LoadState {
   step: LoadStep | null;
@@ -87,11 +88,13 @@ function parseRoute(hash: string, storedMode: ViewMode): Route {
   if (head === 'explore') {
     const params = new URLSearchParams(query);
     // The address wins; without `view` an old link uses the remembered mode (Game for new visitors).
-    const view = parseViewMode(params) ?? storedMode;
+    // The embedded page always shows the Realistic picture (all six bands), whatever the stored mode is.
+    const embed = parseEmbed(params);
+    const view = embed ? 'realistic' : parseViewMode(params) ?? storedMode;
     const rs = parseRealistic(params);
     const base = parseReq(params);
     const req = base && view === 'realistic' ? realisticRequest(base.ra, base.dec, base.fovDeg, rs.group) : base;
-    return { name: 'explore', req, view, rs };
+    return { name: 'explore', req, view, rs, ...(embed ? { embed } : {}) };
   }
   return { name: 'landing' };
 }
@@ -106,6 +109,7 @@ function routeHash(r: Route): string {
     case 'explore': {
       const parts = r.req ? [reqQuery(r.req)] : [];
       parts.push(...(r.view === 'realistic' ? realisticPairs(r.rs).map(([k, v]) => `${k}=${v}`) : ['view=game']));
+      if (r.embed) parts.push('embed=1');
       return `#/explore?${parts.join('&')}`;
     }
   }
@@ -148,8 +152,8 @@ function requestAt(c: { ra: number; dec: number }, fov: number, view: ViewMode, 
   return view === 'realistic' ? realisticRequest(c.ra, c.dec, fov, group) : { ra: c.ra, dec: c.dec, fovDeg: fov };
 }
 
-const shareUrl = (req: PatchRequest, view: ViewMode = 'game', rs: RealisticState = DEFAULT_REALISTIC) =>
-  `${window.location.origin}${window.location.pathname}${routeHash({ name: 'explore', req, view, rs })}`;
+const shareUrl = (req: PatchRequest, view: ViewMode = 'game', rs: RealisticState = DEFAULT_REALISTIC, embed = false) =>
+  `${window.location.origin}${window.location.pathname}${routeHash({ name: 'explore', req, view, rs, embed })}`;
 
 export default function App() {
   const { t } = useI18n();
@@ -324,6 +328,7 @@ export default function App() {
 
   const spotShare = (ra: number, dec: number, fovDeg: number) => ({
     url: shareUrl({ ra, dec, fovDeg }),
+    embedUrl: shareUrl(realisticRequest(ra, dec, fovDeg, DEFAULT_REALISTIC.group), 'realistic', DEFAULT_REALISTIC, true),
     aladin: aladinUrl(ra, dec, fovDeg),
   });
 
@@ -459,6 +464,20 @@ export default function App() {
 
   // explore
   const req = route.req;
+  if (route.embed) {
+    const embedLoad = req ? loads[loadKey(req)] : undefined;
+    if (!req) return <EmbedStatus error={t('embed.noPosition')} />;
+    if (embedLoad?.error) return <EmbedStatus error={R.loadError(errorText(embedLoad.error.err))} />;
+    if (!embedLoad?.patch) return <EmbedStatus live={embedLoad?.live ?? null} />;
+    return (
+      <EmbedView
+        key={loadKey(req)}
+        patch={embedLoad.patch}
+        initial={route.rs}
+        onState={(st) => setLive({ key: loadKey(req), s: st })}
+      />
+    );
+  }
   const realistic = route.view === 'realistic';
   const load = req ? loads[loadKey(req)] : undefined;
   const caseHere = req ? CASES.find((c) => { const r = caseRequest(c.id, req.fovDeg); return Math.abs(r.ra - req.ra) < 1e-4 && Math.abs(r.dec - req.dec) < 1e-4; }) : undefined;
@@ -476,7 +495,7 @@ export default function App() {
     fov: req ? { value: req.fovDeg, onChange: (v) => navigate({ name: 'explore', req: withFov(v), view: route.view, rs: realistic ? (live ?? route.rs) : route.rs }) } : undefined,
     share: req && load?.patch
       ? (realistic
-        ? { url: shareUrl(req, 'realistic', live ?? route.rs), aladin: aladinUrl(req.ra, req.dec, req.fovDeg), realistic: true }
+        ? { url: shareUrl(req, 'realistic', live ?? route.rs), embedUrl: shareUrl(req, 'realistic', live ?? route.rs, true), aladin: aladinUrl(req.ra, req.dec, req.fovDeg), realistic: true }
         : spotShare(req.ra, req.dec, req.fovDeg))
       : undefined,
   };

@@ -186,3 +186,29 @@ Visit labels and windows are computed from the MJD numbers (`data/epochs.ts`), n
 Sentences built in code are structured data formatted at render time (`truthText`, `verdictText`, `changeAmountText`).
 Limits: server `warnings` are shown as received (English); candidates saved before this change keep their English verdict sentence;
 CSV column names stay English.
+
+## Embedding the picture in another page (iframe)
+
+`embed=1` in the hash parameters shows only the sky picture, the visit and band buttons and a play button (no header, no side panels, no notebook, no glossary).
+It always uses the Realistic data (all six detectors). The page fills whatever size the iframe has: the picture is the largest square that fits above the
+controls, and the controls wrap. Everything is read from the address:
+
+| Parameter | Meaning |
+| --- | --- |
+| `ra`, `dec`, `fov` | field centre (degrees) and side (degrees, 0.05 to 0.25) |
+| `band` | `D1` to `D6` |
+| `visit` | visit number, counted from 1 |
+| `mode` | `blink`, `diff` or `stack` (`ref` = visit that `diff` subtracts, from 1) |
+| `speed` | blink speed in frames per second: `0.5`, `1` or `2` |
+| `invert` | `1` for a light background with a dark picture |
+| `stretch`, `lo`, `hi`, `layer`, `group` | as in Realistic mode |
+
+The Share menu has "Copy link" and "Copy embed code". The embed code is this tag (the `&` of the address is written `&amp;`, as HTML wants):
+
+```html
+<iframe src="https://YOUR-HOST/#/explore?ra=269.44627&amp;dec=4.76820&amp;fov=0.1&amp;view=realistic&amp;band=D6&amp;visit=1&amp;embed=1"
+  width="480" height="540" style="border:0" loading="lazy" title="Sky Quest"></iframe>
+```
+
+Add `?lang=tr` or `?lang=en` before the `#` to force the language of the frame. A position that is not in the saved set is downloaded live (15 minutes or more);
+the frame then shows the download progress instead of a picture.

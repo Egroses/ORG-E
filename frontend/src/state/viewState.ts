@@ -1,6 +1,7 @@
 // Everything that makes a Realistic-mode view shareable lives in the address, so a copied link reopens the same picture.
 // Parameters (all optional): view=realistic band=D5 visit=2 ref=1 mode=blink|diff|stack stretch=linear|asinh|sqrt|log
-// lo=5 hi=99.5 (percent cuts) group=fine|normal|coarse layer=none|flags|heavy. `visit` and `ref` count from 1.
+// lo=5 hi=99.5 (percent cuts) group=fine|normal|coarse layer=none|flags|heavy speed=0.5|1|2 invert=1.
+// `visit` and `ref` count from 1. embed=1 asks for the stripped-down page that is meant for an iframe.
 
 import type { BandId, CompareMode } from '../data/types';
 import { ALL_BANDS, type GroupId } from '../data/catalog';
@@ -22,10 +23,15 @@ export interface RealisticState {
   hi: number;
   group: GroupId;
   quality: QualityLayer;
+  /** Frames per second of the blink playback (0.5, 1 or 2). */
+  speed?: number;
+  /** Light background, dark image. */
+  invert?: boolean;
 }
 
 export const DEFAULT_REALISTIC: RealisticState = { mode: 'blink', stretch: 'asinh', lo: 5, hi: 99.5, group: 'normal', quality: 'none' };
 
+export const SPEEDS = [0.5, 1, 2];
 const MODES: CompareMode[] = ['blink', 'diff', 'stack'];
 const STRETCHES: StretchFn[] = ['linear', 'asinh', 'sqrt', 'log'];
 const GROUPS: GroupId[] = ['fine', 'normal', 'coarse'];
@@ -42,6 +48,9 @@ const pctOr = (v: string | null, fallback: number) => {
   const n = v === null || v === '' ? NaN : Number(v);
   return Number.isFinite(n) && n >= 0 && n <= 100 ? n : fallback;
 };
+
+/** `embed=1` in the hash parameters: only the picture and its controls are drawn. */
+export const parseEmbed = (params: URLSearchParams) => params.get('embed') === '1';
 
 export function parseViewMode(params: URLSearchParams): ViewMode | null {
   const v = params.get('view');
@@ -62,6 +71,8 @@ export function parseRealistic(params: URLSearchParams): RealisticState {
     lo, hi,
     group: pick(params.get('group'), GROUPS, DEFAULT_REALISTIC.group),
     quality: LAYERS[params.get('layer') ?? ''] ?? 'none',
+    speed: SPEEDS.includes(Number(params.get('speed'))) ? Number(params.get('speed')) : undefined,
+    invert: params.get('invert') === '1' ? true : undefined,
   };
 }
 
@@ -77,6 +88,8 @@ export function realisticPairs(s: RealisticState): [string, string][] {
   if (s.hi !== DEFAULT_REALISTIC.hi) out.push(['hi', String(s.hi)]);
   if (s.group !== DEFAULT_REALISTIC.group) out.push(['group', s.group]);
   if (s.quality !== 'none') out.push(['layer', LAYER_NAME[s.quality]]);
+  if (s.speed !== undefined && s.speed !== 1) out.push(['speed', String(s.speed)]);
+  if (s.invert) out.push(['invert', '1']);
   return out;
 }
 

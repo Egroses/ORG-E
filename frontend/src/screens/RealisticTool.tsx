@@ -18,7 +18,7 @@ import { percentileStretch, refNoise, type StretchFn } from '../sky/render';
 import { pixelToSky, skyToPixel, mjdToYear } from '../sky/astro';
 import { sourceAt } from '../sky/catalogue';
 import type { Candidate } from '../state/progress';
-import type { QualityLayer, RealisticState } from '../state/viewState';
+import { SPEEDS, type QualityLayer, type RealisticState } from '../state/viewState';
 import { R, pctText } from '../ui/realisticText';
 import { formatMJySr, percentText } from '../lib/format';
 import { num } from '../i18n';
@@ -32,7 +32,6 @@ const MAX_MARKS = 20;
 const MODE_IDS: CompareMode[] = ['blink', 'diff', 'stack'];
 const STRETCH_IDS: StretchFn[] = ['linear', 'asinh', 'sqrt', 'log'];
 const LAYER_IDS: QualityLayer[] = ['none', 'flagshare', 'heavy'];
-const SPEEDS = [0.5, 1, 2];
 
 type Sheet = 'find' | 'layers' | 'map';
 
@@ -68,7 +67,7 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
   const [band, setBand] = useState(startBand);
   const [playing, setPlaying] = useState(false);
   const [axis, setAxis] = useState<'epochs' | 'bands'>('epochs');
-  const [speed, setSpeed] = useState(1);
+  const [speed, setSpeed] = useState(initial.speed ?? 1);
   const [compare, setCompare] = useState<CompareMode>(initial.mode);
   const [refEpoch, setRefEpoch] = useState(() => clampEp(initial.ref, firstWithPhoto(patch, startBand)));
   const [stackSet, setStackSet] = useState<number[]>(() => patch.epochs.map((_, e) => e));
@@ -78,7 +77,7 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
   const [quality, setQuality] = useState<QualityLayer>(initial.quality);
   const [grid, setGrid] = useState(false);
   const [magnify, setMagnify] = useState(false);
-  const [invert, setInvert] = useState(false);
+  const [invert, setInvert] = useState(initial.invert ?? false);
   const [showCat, setShowCat] = useState(true);
   const [mark, setMark] = useState<Pt | null>(null);
   const [focusPt, setFocusPt] = useState<Pt | null>(null);
@@ -90,10 +89,10 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
   useEffect(() => {
     onState({
       band: patch.bands[band].id, visit: epoch, ref: compare === 'diff' ? refEpoch : undefined, mode: compare,
-      stretch: stretchFn, lo, hi, group: initial.group, quality,
+      stretch: stretchFn, lo, hi, group: initial.group, quality, speed, invert,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [band, epoch, refEpoch, compare, stretchFn, lo, hi, quality]);
+  }, [band, epoch, refEpoch, compare, stretchFn, lo, hi, quality, speed, invert]);
 
   const hasShare = !!patch.flagShare;
   const physical = !!patch.noiseRefMJySr;

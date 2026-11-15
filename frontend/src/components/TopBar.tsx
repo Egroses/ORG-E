@@ -8,6 +8,7 @@ import type { Theme } from '../state/theme';
 import { Icon } from './Icon';
 import { LANGS } from '../i18n';
 import { useI18n } from '../i18n/react';
+import { copyText, iframeSnippet } from '../lib/embedCode';
 import { searchErrorKey, useSearchSubmit, type SearchResult } from '../lib/useSearchSubmit';
 
 export function Logo({ size = 28 }: { size?: number }) {
@@ -30,7 +31,7 @@ export interface ToolControls {
   customLabel?: string;
   /** Only in Explore: the field of view can be changed. */
   fov?: { value: number; onChange: (v: number) => void };
-  share?: { url: string; aladin: string; realistic?: boolean };
+  share?: { url: string; embedUrl: string; aladin: string; realistic?: boolean };
   /** Realistic mode names targets plainly instead of as game cases. */
   targetLabel?: (c: CaseDef) => string;
 }
@@ -76,10 +77,10 @@ export function LangSwitch() {
   );
 }
 
-function ShareMenu({ url, realistic }: { url: string; realistic?: boolean }) {
+function ShareMenu({ url, embedUrl, realistic }: { url: string; embedUrl: string; realistic?: boolean }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'link' | 'embed' | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -89,22 +90,20 @@ function ShareMenu({ url, realistic }: { url: string; realistic?: boolean }) {
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
   }, [open]);
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-    } catch {
-      setCopied(false);
-    }
+  async function copy(what: 'link' | 'embed') {
+    const ok = await copyText(what === 'link' ? url : iframeSnippet(embedUrl));
+    setCopied(ok ? what : null);
   }
   return (
     <div className="menu-wrap" ref={ref}>
-      <button type="button" className="btn btn-sm" aria-label={t('share.label')} aria-haspopup="menu" aria-expanded={open} onClick={() => { setOpen((o) => !o); setCopied(false); }}>
+      <button type="button" className="btn btn-sm" aria-label={t('share.label')} aria-haspopup="menu" aria-expanded={open} onClick={() => { setOpen((o) => !o); setCopied(null); }}>
         <Icon name="link" size={14} /><span className="lbl">{t('share.label')}</span>
       </button>
       {open && (
         <div className="menu" role="menu">
-          <button type="button" role="menuitem" onClick={copy}><Icon name="copy" size={14} />{copied ? R.shareCopied : realistic ? R.shareCopy : t('share.copySpot')}</button>
+          <button type="button" role="menuitem" onClick={() => copy('link')}><Icon name="copy" size={14} />{copied === 'link' ? R.shareCopied : realistic ? R.shareCopy : t('share.copySpot')}</button>
+          <button type="button" role="menuitem" onClick={() => copy('embed')}><Icon name="copy" size={14} />{copied === 'embed' ? t('share.embedCopied') : t('share.copyEmbed')}</button>
+          <span className="sr-only" role="status">{copied === 'link' ? R.shareCopied : copied === 'embed' ? t('share.embedCopied') : ''}</span>
         </div>
       )}
     </div>
@@ -184,7 +183,7 @@ export function TopBar({ results, active, theme, onTheme, onHome, onCases, onExp
               ))}
             </div>
           )}
-          {tool.share && <ShareMenu url={tool.share.url} realistic={tool.share.realistic} />}
+          {tool.share && <ShareMenu url={tool.share.url} embedUrl={tool.share.embedUrl} realistic={tool.share.realistic} />}
           {tool.share && (
             <a className="btn btn-sm" href={tool.share.aladin} target="_blank" rel="noopener noreferrer" title={R.shareAladin} aria-label={R.shareAladin}>
               <Icon name="external" size={14} /><span className="lbl">{R.shareAladin}</span>
