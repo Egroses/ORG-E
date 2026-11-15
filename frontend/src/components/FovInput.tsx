@@ -5,8 +5,7 @@ import { useI18n } from '../i18n/react';
 import './fov-input.css';
 
 /** Field size in arcminutes, 3 to 15. A value outside that range is clamped and said so; text that is not a number is refused. */
-export function FovInput({ valueDeg, onChange, maxDeg }: { valueDeg: number; onChange: (deg: number) => void; maxDeg?: number }) {
-  const maxArcmin = maxDeg !== undefined ? Math.round(maxDeg * 60) : FOV_MAX_ARCMIN;
+export function FovInput({ valueDeg, onChange }: { valueDeg: number; onChange: (deg: number) => void }) {
   const { t } = useI18n();
   const id = useId();
   const shown = String(Math.round(valueDeg * 60 * 10) / 10);
@@ -22,12 +21,12 @@ export function FovInput({ valueDeg, onChange, maxDeg }: { valueDeg: number; onC
   }
 
   function commit() {
-    const r = checkFovArcmin(text, maxArcmin);
+    const r = checkFovArcmin(text);
     if (!r.ok) {
-      setMsg(t('fov.err.nan', { min: FOV_MIN_ARCMIN, max: maxArcmin }));
+      setMsg(t('fov.err.nan', { min: FOV_MIN_ARCMIN, max: FOV_MAX_ARCMIN }));
       return;
     }
-    setMsg(r.clamped ? (maxArcmin < FOV_MAX_ARCMIN ? t('fov.savedMax') : t('fov.err.range', { min: FOV_MIN_ARCMIN, max: maxArcmin, v: num(r.arcmin, 0) })) : null);
+    setMsg(r.clamped ? t('fov.err.range', { min: FOV_MIN_ARCMIN, max: FOV_MAX_ARCMIN, v: num(r.arcmin, 0) }) : null);
     setText(String(r.arcmin));
     setCommitted(String(Math.round(r.deg * 60 * 10) / 10));
     if (Math.abs(r.deg - valueDeg) > 1e-6) onChange(r.deg);

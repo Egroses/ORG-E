@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arcminToDeg, checkFovArcmin, exceedsSaved, maxFovDeg, parseFovDeg } from './fov';
+import { arcminToDeg, checkFovArcmin, exceedsSaved, parseFovDeg } from './fov';
 
 describe('field size', () => {
   it('turns arcminutes into degrees with four decimals', () => {
@@ -32,17 +32,5 @@ describe('field size', () => {
     expect(exceedsSaved(0.05)).toBe(false);
     expect(exceedsSaved(0.1333)).toBe(true);
     expect(exceedsSaved(0.25)).toBe(true);
-  });
-});
-
-describe('field limit of a saved target', () => {
-  it('a saved target is limited to the 6 arcminutes it has data for, any other position to 15', () => {
-    expect(maxFovDeg(true)).toBe(0.1);
-    expect(maxFovDeg(false)).toBe(0.25);
-  });
-  it('typed values are clamped to the limit that is given', () => {
-    expect(checkFovArcmin('15', 6)).toMatchObject({ ok: true, arcmin: 6, clamped: true });
-    expect(checkFovArcmin('5', 6)).toMatchObject({ ok: true, arcmin: 5, clamped: false });
-    expect(checkFovArcmin('15')).toMatchObject({ ok: true, arcmin: 15, clamped: false });
   });
 });

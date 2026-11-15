@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Chip, LiveProgress, LoadStep, PatchRequest, Pt, SkyPatch, TargetId } from './data/types';
 import { CASES, KNOWN } from './data/catalog';
-import { exceedsSaved, maxFovDeg, parseFovDeg } from './lib/fov';
+import { exceedsSaved, parseFovDeg } from './lib/fov';
 import { caseRequest, loadPatch, patchKey, realisticRequest } from './data/provider';
 import { answerKey, evaluate } from './sky/analysis';
 import { lookupName, parseCoords } from './sky/astro';
@@ -494,7 +494,7 @@ export default function App() {
     targetLabel: realistic ? (c) => KNOWN[c.id].name : undefined,
     onSearch: (t) => handleSearch(t, req?.fovDeg ?? 0.1),
     customLabel: shownName ?? undefined,
-    fov: req ? { value: req.fovDeg, max: maxFovDeg(!!caseHere), onChange: (v) => navigate({ name: 'explore', req: withFov(Math.min(v, maxFovDeg(!!caseHere))), view: route.view, rs: realistic ? (live ?? route.rs) : route.rs }) } : undefined,
+    fov: req ? { value: req.fovDeg, onChange: (v) => navigate({ name: 'explore', req: withFov(v), view: route.view, rs: realistic ? (live ?? route.rs) : route.rs }) } : undefined,
     share: req && load?.patch
       ? (realistic
         ? { url: shareUrl(req, 'realistic', live ?? route.rs), embedUrl: shareUrl(req, 'realistic', live ?? route.rs, true), aladin: aladinUrl(req.ra, req.dec, req.fovDeg), realistic: true }

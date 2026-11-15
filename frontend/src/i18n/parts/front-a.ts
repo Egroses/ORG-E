@@ -28,7 +28,6 @@ export const en = {
   'fov.custom': 'Field size in arcminutes (3 to 15)',
   'fov.err.nan': 'Type a number of arcminutes between {min} and {max}.',
   'fov.err.range': 'The field can be {min}′ to {max}′ wide. Using {v}′.',
-  'fov.savedMax': 'The saved images of this target cover 6′, so the field is limited to 6′.',
   'fov.hint': 'The saved images of this target cover about 6′ across, so the outer part of this {v}′ field is empty. A position that is not saved is downloaded for the field you ask for.',
   // ---- Realistic display options ----
   'r.smooth': 'Smooth',
@@ -61,7 +60,6 @@ export const tr: Record<keyof typeof en, string> = {
   'fov.custom': 'Alan boyutu, yay dakikası cinsinden (3 ile 15 arası)',
   'fov.err.nan': '{min} ile {max} arasında bir yay dakikası değeri yaz.',
   'fov.err.range': 'Alan {min}′ ile {max}′ arasında olabilir. {v}′ kullanılıyor.',
-  'fov.savedMax': 'Bu hedefin kayıtlı görüntüleri 6′ kapsıyor, bu yüzden alan 6′ ile sınırlı.',
   'fov.hint': 'Bu hedefin kayıtlı görüntüleri yaklaşık 6′ genişliğinde; bu yüzden {v}′ genişliğindeki alanın dış kısmı boş kalır. Kayıtlı olmayan bir konum, istediğin alan için indirilir.',
   'r.smooth': 'Yumuşat',
   'r.smoothTitle': 'Görüntüyü kare pikseller yerine yumuşatarak (çift doğrusal) göster',
