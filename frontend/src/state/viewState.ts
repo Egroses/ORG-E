@@ -1,11 +1,12 @@
 // Everything that makes a Realistic-mode view shareable lives in the address, so a copied link reopens the same picture.
 // Parameters (all optional): view=realistic band=D5 visit=2 ref=1 mode=blink|diff|stack stretch=linear|asinh|sqrt|log
-// lo=5 hi=99.5 (percent cuts) group=fine|normal|coarse layer=none|flags|heavy speed=0.5|1|2 invert=1.
-// grid=1 smooth=1 use=1,3 ref=prev. `visit`, `ref` and `use` count from 1. embed=1 asks for the stripped-down page that is meant for an iframe.
+// lo=5 hi=99.5 (percent cuts) group=fine|normal|coarse layer=none|flags|heavy speed=0.5|1|2 invert=1 ap=1|2|3 (spectrum aperture, pixels)
+// spec=binned|all (spectrum view) grid=1 smooth=1 use=1,3 ref=prev. `visit`, `ref` and `use` count from 1. embed=1 asks for the stripped-down page that is meant for an iframe.
 
 import type { BandId, CompareMode } from '../data/types';
 import { ALL_BANDS, type GroupId } from '../data/catalog';
 import type { StretchFn } from '../sky/render';
+import { APERTURES, DEFAULT_APERTURE, type Aperture, type SpectrumView } from '../data/spectrumApi';
 
 export type ViewMode = 'game' | 'realistic';
 export type QualityLayer = 'none' | 'flagshare' | 'heavy';
@@ -35,9 +36,13 @@ export interface RealisticState {
   use?: number[];
   /** Difference subtracts the visit before the shown one instead of a fixed reference. */
   refPrev?: boolean;
+  /** Spectrum aperture radius in detector pixels. */
+  aperture: Aperture;
+  /** Spectrum view: 102 channels or one point per exposure. */
+  spec: SpectrumView;
 }
 
-export const DEFAULT_REALISTIC: RealisticState = { mode: 'blink', stretch: 'asinh', lo: 5, hi: 99.5, group: 'normal', quality: 'none' };
+export const DEFAULT_REALISTIC: RealisticState = { mode: 'blink', stretch: 'asinh', lo: 5, hi: 99.5, group: 'normal', quality: 'none', aperture: DEFAULT_APERTURE, spec: 'binned' };
 
 export const SPEEDS = [0.5, 1, 2];
 const MODES: CompareMode[] = ['blink', 'diff', 'stack'];
@@ -93,6 +98,8 @@ export function parseRealistic(params: URLSearchParams): RealisticState {
     smooth: params.get('smooth') === '1' ? true : undefined,
     use: parseUse(params.get('use')),
     refPrev: params.get('ref') === 'prev' ? true : undefined,
+    aperture: APERTURES.find((a) => String(a) === params.get('ap')) ?? DEFAULT_APERTURE,
+    spec: params.get('spec') === 'all' ? 'all' : 'binned',
   };
 }
 
@@ -114,6 +121,8 @@ export function realisticPairs(s: RealisticState): [string, string][] {
   if (s.grid) out.push(['grid', '1']);
   if (s.smooth) out.push(['smooth', '1']);
   if (s.use && s.use.length) out.push(['use', s.use.map((e) => e + 1).join(',')]);
+  if (s.aperture !== DEFAULT_REALISTIC.aperture) out.push(['ap', String(s.aperture)]);
+  if (s.spec !== DEFAULT_REALISTIC.spec) out.push(['spec', s.spec]);
   return out;
 }
 

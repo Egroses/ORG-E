@@ -293,7 +293,7 @@ export const en = {
   'chart.date': 'date',
   'chart.fluxMJy': 'flux, mJy',
   'chart.wavelength': 'wavelength, µm',
-  'chart.flaggedPoint': '(flagged)',
+  'chart.flaggedPoint': '(bad pixel in aperture)',
 
   // measuring, catalogue check, changes
   'mc.empty': 'Click a dot on the picture. Then the shift, the speed and a per-visit table appear here.',
@@ -682,7 +682,7 @@ export const tr: Record<keyof typeof en, string> = {
   'chart.date': 'tarih',
   'chart.fluxMJy': 'akı, mJy',
   'chart.wavelength': 'dalga boyu, µm',
-  'chart.flaggedPoint': '(bayraklı)',
+  'chart.flaggedPoint': '(açıklıkta bozuk piksel)',
 
   'mc.empty': 'Görüntüde bir noktaya tıkla. Kayma, hız ve dönem başına bir tablo burada görünür.',
   'mc.shift': 'Kayma, ilkten sonuncuya',

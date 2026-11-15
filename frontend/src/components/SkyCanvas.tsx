@@ -14,6 +14,17 @@ export interface Ring {
   r?: number;
   label?: string;
   dashed?: boolean;
+  /** Square outline (WISE) instead of a circle (Gaia, known objects). */
+  square?: boolean;
+}
+
+/** A proper-motion arrow in image pixels, from the source to where it will be after the stated time. */
+export interface Arrow {
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  color: string;
 }
 
 interface Props {
@@ -30,6 +41,7 @@ interface Props {
   mark?: Pt | null;
   rings?: Ring[];
   path?: Pt[];
+  arrows?: Arrow[];
   pathColor?: string;
   /** Point the magnifier zooms around. Defaults to the mark, then the centre. */
   focus?: Pt | null;
@@ -102,7 +114,7 @@ function placeLabels(items: { x: number; y: number; r: number; text: string }[],
 
 export function SkyCanvas({
   patch, epoch, band, mode = 'blink', detail = 'standard', invert = false, magnify = false, grid = false, smooth = false,
-  mark = null, rings = [], path, pathColor = '#9aa4b2', focus = null, onTap, tapLabel, className = '', children,
+  mark = null, rings = [], path, arrows = [], pathColor = '#9aa4b2', focus = null, onTap, tapLabel, className = '', children,
   chrome = false, showFlags = false, brightness = 1, contrast = 1, stretch: stretchFn = 'asinh',
   stretchOverride, quality = 'none', physical = false, refEpoch = 0, stackEpochs,
 }: Props) {
@@ -352,6 +364,21 @@ export function SkyCanvas({
           style={brightness !== 1 || contrast !== 1 ? { filter: `brightness(${brightness}) contrast(${contrast})` } : undefined}
         />
         {grid && <div className="sky-grid" style={{ backgroundSize: `${100 / size}% ${100 / size}%` }} />}
+        {arrows.length > 0 && (
+          <svg className="sky-svg" viewBox={`0 0 ${size} ${size}`} preserveAspectRatio="none" aria-hidden="true">
+            {arrows.map((a, i) => {
+              const x0 = a.x + 0.5, y0 = a.y + 0.5, x1 = x0 + a.dx, y1 = y0 + a.dy;
+              const len = Math.hypot(a.dx, a.dy) || 1;
+              const ux = a.dx / len, uy = a.dy / len, h = Math.min(len * 0.4, size / 45);
+              return (
+                <g key={i} className="sky-arrow" stroke={a.color} strokeWidth={size / 260} fill="none">
+                  <line x1={x0} y1={y0} x2={x1} y2={y1} />
+                  <path d={`M${x1 - ux * h - uy * h * 0.5} ${y1 - uy * h + ux * h * 0.5}L${x1} ${y1}L${x1 - ux * h + uy * h * 0.5} ${y1 - uy * h - ux * h * 0.5}`} />
+                </g>
+              );
+            })}
+          </svg>
+        )}
         {path && path.length > 1 && (
           <svg className="sky-svg" viewBox={`0 0 ${size} ${size}`} preserveAspectRatio="none" aria-hidden="true">
             <polyline
@@ -365,7 +392,7 @@ export function SkyCanvas({
           return (
             <span
               key={i}
-              className={`sky-ring${ring.dashed ? ' dashed' : ''}`}
+              className={`sky-ring${ring.dashed ? ' dashed' : ''}${ring.square ? ' square' : ''}`}
               style={{
                 left: `${((ring.x + 0.5 - r) / size) * 100}%`,
                 top: `${((ring.y + 0.5 - r) / size) * 100}%`,
