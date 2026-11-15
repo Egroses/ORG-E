@@ -52,6 +52,7 @@ Update this file as work progresses (`[x]` when done).
 - [x] Tested with the `feature/imaging-quest` branch on the full cache (69 tests, 5 targets x 2 detector sets)
 - [x] `imaging/` merged into `main` (79ebb33); on `main`: 69 backend + 27 imaging tests pass, smoke test `/api/patch` Barnard 200
 - [x] Frontend `realProvider.ts` against `/api/patch` (3adb847); checked end to end, five cases open with real data
+- [x] Frontend endpoints checked against the backend; Gaia fields of the five targets stored in git (`app/gaia_fields/`, ESA then GAVO mirror for others); spectrum cutouts kept in memory and warmed at start (16 s → 0.2-1.3 s)
 - [x] Refresh with new data: `scripts/refresh.py` (incremental download, `--check`); jobs and patches keep a manifest stamp and are rebuilt when the cache changes (71 tests)
 
 ## Sunday 18:00 code freeze

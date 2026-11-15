@@ -136,6 +136,9 @@ wavelength, so every cutout gives one point: flux in a 2-pixel (12.3") aperture 
 of a 4-7 pixel annulus, error from the `VARIANCE` layer, wavelength from `WCS-WAVE` at the source
 pixel. With `pmra`/`pmdec` the aperture follows a moving source to each exposure's date.
 Points with a flagged pixel in the aperture (e.g. a saturated core) carry `flagged: true`.
+Each cutout's pixels and WCS are kept in memory after the first use (~125 kB each), so a second
+spectrum near the same position takes well under a second. With `PREBUILD_ON_START=1` the five
+targets are loaded at start (about 3 minutes, ~300 MB).
 
 Approximation: surface brightness (MJy/sr) is converted to flux with the nominal pixel area
 (6.15" x 6.15"). The true pixel solid angle varies across the detector; the official solid-angle
@@ -143,12 +146,21 @@ pixel map (`nasa-irsa-spherex/dr1/solid_angle_pixel_map/`) would make the fluxes
 Aperture losses are not corrected, so fluxes of point sources are underestimated by a constant
 factor per detector; spectra shapes and light curves are unaffected.
 
+## Gaia fields
+
+`/api/gaia` answers the five test targets from `app/gaia_fields/<target>.csv` (every Gaia DR3
+source with G < 19 within 0.2 deg, epoch 2016.0, ~570 kB in all), so their catalogue works with
+no archive. Other positions, larger radii or fainter limits are queried live: ESA first, then the
+GAVO mirror. Refresh the files with `python -m scripts.gaia_fields`.
+
 ## Data and acknowledgements
 
 - **SPHEREx** spectral images from the NASA/IPAC Infrared Science Archive (IRSA):
   SPHEREx Data Release 1 (DR1) Spectral Images, [doi:10.26131/IRSA678](https://doi.org/10.26131/IRSA678),
   and SPHEREx Quick Release 3 (QR3) Spectral Images, [doi:10.26131/IRSA662](https://doi.org/10.26131/IRSA662).
-- **Gaia DR3** sources from the ESA Gaia archive (`/api/gaia`).
+- **Gaia DR3** sources (`/api/gaia`) from the ESA Gaia archive, or from the GAVO Data Center
+  mirror (Heidelberg, `gaia.dr3lite`) when ESA does not answer. The stored fields of the five
+  targets (`app/gaia_fields/`) were taken from GAVO on 15 Nov 2026, when the ESA archive was down.
 - **SIMBAD** for name resolving (`/api/resolve`), via the Harvard mirror and CDS.
 
 "This publication makes use of data products from the Spectro-Photometer for the History of the
@@ -175,7 +187,7 @@ Libraries: FastAPI, Pydantic, Uvicorn, Astropy, Astroquery, NumPy, Pillow, Reque
 
 Space Apps asks teams to state where AI ("Super Intelligence") tools were used. Most of the
 backend code in this folder (API models, name resolving, job model, fallback frame maker,
-photometry, Gaia endpoint, `/api/patch` service, data refresh command, tests and deploy files) was written with an AI coding assistant
+photometry, Gaia endpoint and stored fields, `/api/patch` service, data refresh command, tests and deploy files) was written with an AI coding assistant
 (Claude Code, Anthropic) under the direction of the backend owner, who reviewed it and checked it
 against real SPHEREx data (tests in `tests/`). The approach and design decisions are the team's
 (`docs/design-v2.md`).

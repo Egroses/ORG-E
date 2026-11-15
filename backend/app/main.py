@@ -26,6 +26,19 @@ log = logging.getLogger("backend")
 def _prebuild():
     submit_all(jobs.manager)
     patch.submit_all()
+    warm_spectra()  # after the queuing above; runs alongside the builds
+
+
+def warm_spectra():
+    """Load the cached cutouts of the five targets into memory so the first spectrum is fast."""
+    from .photometry import photometry
+    from .targets import TARGETS
+    for t in TARGETS:
+        try:
+            photometry(t.ra, t.dec)
+        except Exception:  # never stop the start-up for this
+            log.exception("could not warm the spectrum of %s", t.key)
+    log.info("spectrum cutouts of the test targets are in memory")
 
 
 @asynccontextmanager

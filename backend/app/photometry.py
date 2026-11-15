@@ -10,6 +10,7 @@ Only cached cutouts are used: no archive request is made here.
 import csv
 import logging
 import math
+import threading
 import warnings
 from functools import lru_cache
 from pathlib import Path
@@ -75,31 +76,48 @@ def position_at(ra, dec, pmra, pmdec, mjd, epoch):
     return (ra + pmra * years / 3.6e6 / math.cos(math.radians(dec)), dec + pmdec * years / 3.6e6)
 
 
-@lru_cache(maxsize=20000)
-def measure(path, ra, dec):
-    """(wavelength_um, flux_mjy, err_mjy, flagged) at (ra, dec) in one cutout, or None."""
+_wcs_lock = threading.Lock()  # wcslib objects are shared between request threads
+
+
+@lru_cache(maxsize=4000)
+def _load(path):
+    """Pixels and both WCS of one cutout, kept in memory (building the WCS is most of the cost).
+
+    About 125 kB per cutout: R Draconis, the largest target, has ~2500 cutouts (~300 MB).
+    """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", FITSFixedWarning)
         with fits.open(path, memmap=False) as hdul:
-            image = hdul["IMAGE"].data.astype(np.float64) - hdul["ZODI"].data.astype(np.float64)
-            variance = hdul["VARIANCE"].data.astype(np.float64)
-            flags = hdul["FLAGS"].data.astype(np.int64)
+            image = (hdul["IMAGE"].data.astype(np.float64) - hdul["ZODI"].data.astype(np.float64)).astype(np.float32)
+            variance = hdul["VARIANCE"].data.astype(np.float32)
             bits = _bit_numbers(hdul["FLAGS"].header)
+            mask = _mask_bits(BAD_BITS, bits) | _mask_bits(SATURATION_BITS, bits)
+            bad = (hdul["FLAGS"].data.astype(np.int64) & mask) != 0
             sky_wcs = WCS(hdul["IMAGE"].header)
-            x, y = (float(v) for v in sky_wcs.all_world2pix(ra, dec, 0))
-            ny, nx = image.shape
-            if not (ANNULUS_PX[1] <= x < nx - ANNULUS_PX[1] and ANNULUS_PX[1] <= y < ny - ANNULUS_PX[1]):
-                return None
             wave_wcs = WCS(hdul["IMAGE"].header, fobj=hdul, key="W")
             wave_wcs.sip = None
-            wavelength, _ = wave_wcs.pixel_to_world(x, y)
-            wavelength_um = float(wavelength.to(u.um).value)
+    return image, variance, bad, sky_wcs, wave_wcs
+
+
+@lru_cache(maxsize=20000)
+def measure(path, ra, dec):
+    """(wavelength_um, flux_mjy, err_mjy, flagged) at (ra, dec) in one cutout, or None."""
+    image32, variance32, bad, sky_wcs, wave_wcs = _load(path)
+    with _wcs_lock:
+        x, y = (float(v) for v in sky_wcs.all_world2pix(ra, dec, 0))
+    ny, nx = image32.shape
+    if not (ANNULUS_PX[1] <= x < nx - ANNULUS_PX[1] and ANNULUS_PX[1] <= y < ny - ANNULUS_PX[1]):
+        return None
+    with _wcs_lock:
+        wavelength, _ = wave_wcs.pixel_to_world(x, y)
+    wavelength_um = float(wavelength.to(u.um).value)
+    image = image32.astype(np.float64)
+    variance = variance32.astype(np.float64)
 
     yy, xx = np.indices(image.shape)
     r = np.hypot(xx - x, yy - y)
     aperture = r <= APERTURE_PX
     annulus = (r >= ANNULUS_PX[0]) & (r <= ANNULUS_PX[1])
-    bad = (flags & (_mask_bits(BAD_BITS, bits) | _mask_bits(SATURATION_BITS, bits))) != 0
 
     sky = image[annulus & ~bad & np.isfinite(image)]
     background = float(np.median(sky)) if sky.size >= 5 else 0.0

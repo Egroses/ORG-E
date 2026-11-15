@@ -7,6 +7,15 @@ Ekibe gönderilecek özet doküman: https://claude.ai/artifact/Kisqc232fpfzyH9zk
 
 ## Arayüz (frontend)
 
+- [ ] **Frontend'in kullandığı uç noktalar backend'e karşı denendi (15 Kasım).** `/api/patch`, `/api/gaia`, `/api/spectrum`, `/api/health`: yanıt biçimleri birebir uyuşuyor. Backend'de düzeltilenler ve frontend'e kalanlar:
+  - **Gaia (düzeltildi, backend):** ESA Gaia arşivi 15 Kasım'da yanıt vermiyordu, katalog katmanı sessizce kayboluyordu. Artık beş hedefin alanı repodaki dosyalardan geliyor (arşive gitmez, ~20 ms); diğer konumlarda ESA yanıt vermezse GAVO (Heidelberg) yansısı deneniyor. Sözleşme aynı.
+  - **Tayf hızı (düzeltildi, backend):** ilk istek ~16 sn sürüyordu ve ziyaret değişince (konum biraz kayınca) yine 16 sn. Artık kesitler bellekte tutuluyor: aynı hedefte yeni konum 0,2–1,3 sn. `PREBUILD_ON_START=1` ile açılışta yükleniyor (~3 dk, ~300 MB).
+  - **Tayf mesajı (frontend):** önbellekte olmayan konumda backend 404 `no_coverage` döner ("bu konumu kapsayan kesit yok"). Arayüz bunu "bu sunucu /api/spectrum sunmuyor" diye gösteriyor (`r.spectrumUnavailable`). 404 + `no_coverage` için ayrı bir metin daha doğru olur.
+  - **Barnard tayfı (bilgi):** 358 noktanın hepsi `flagged` (yıldızın çekirdeği doymuş). Noktalar içi boş çizildiği için doğru görünüyor, ama "doymuş" açıklaması eklenebilir.
+  - **0,25° görüş alanı (frontend):** önbellekteki kesitler 0,1° olduğu için 0,25°'de görüntünün ~%84'ü boş kalıyor. Backend bunu `warnings` ile bildiriyor, ama uyarı yalnızca gerçekçi moddaki bulgular panelinde görünüyor. Oyunda da gösterilebilir ya da hedeflerde 0,25° kapatılabilir.
+  - **Canlı sorgu açılırsa (şimdilik sorun değil):** gerçekçi mod her zaman 6 dedektör istiyor, backend canlı sorguda tek dedektöre izin veriyor (400). Frontend 180 sn'de vazgeçiyor, canlı indirme dedektör başına 4–5 dk.
+  - Kullanılmayan uç noktalar (bilgi): `/api/resolve`, `/api/targets`, `/api/jobs`, `/api/frames`, `/api/diff`, `/api/lightcurve`.
+
 - [ ] **`feature/imaging-quest` uçtan uca denendi (15 Kasım, `68c47f7`):** backend 69 test, frontend 72 test geçti; derlenen frontend backend'den sunulunca beş vaka gerçek SPHEREx verisiyle açıldı ("Gerçek SPHEREx (IRSA)"), hata yok. **Dal henüz `main`'e birleşmedi**; birleşince `main` üzerinde kısa bir kontrol yapılacak.
   - **Frontend Node 22 ister:** Vite 8, Node 21.4'te açılmıyor (`util.styleText` yok). Node 22 LTS (ya da 20.19+) gerekli; frontend README'sine yazılmalı.
   - imaging işlem havuzu: sunucu zorla kapatılırsa (Ctrl+C değil, süreç öldürme) 8 yardımcı işlem arkada kalabiliyor; normal kapatmada sorun beklenmez.

@@ -37,7 +37,7 @@ npm run dev                      # http://localhost:5173
 
 Frontend `/api` isteklerini 8000'deki backend'e yönlendirir; backend kapalıysa demo veriye düşer.
 
-**Testler** (`backend` klasöründe): `python -m pytest -q` → 71 passed, 2 skipped.
+**Testler** (`backend` klasöründe): `python -m pytest -q` → 73 passed, 2 skipped.
 
 **Yeni veriyle yenileme:** `python -m scripts.refresh --check` (rapor), `python -m scripts.refresh` (indir + yeniden üret).
 
@@ -76,6 +76,8 @@ Claude dokümanları:
 1. ~~Yeni veriyle yenileme komutu~~ **yapıldı (15 Kasım):** `python -m scripts.refresh` (`--check` yalnızca rapor).
    Sonuçlar manifest damgası saklıyor, önbellek değişince aynı kimlikle yeniden üretiliyor. Testler 71 passed.
 2. ~~`mock-error` farkı~~ **kapandı:** yeni frontend `/api/jobs` kullanmıyor; `/api/patch` hata yönetimi iki biçimi de karşılıyor.
+   **Frontend uç noktaları incelendi (15 Kasım):** Gaia alanları repoda (`app/gaia_fields/`, ESA kapalıyken GAVO'dan),
+   tayf bellekte (0,2–1,3 sn). Frontend'e kalanlar `team-notes.md`'de (tayf mesajı, 0,25° uyarısı). Testler 73 passed.
 3. **Epsilon Indi B kısa dönemler.** Varsayılan 10/30 ayarında 1 ve 3 görüntülük dönemler çıkıyor. Arayüz 30/60
    kullandığı için oyunda sorun yok; `/api/jobs` için karar imaging sahibiyle.
 4. **Parlak yıldız fotometrisi.** Barnard D6 ve R Dra D4-D6 noktaları doymuş (`flagged`). Kanatlardan ölçüm yöntemi yok.
