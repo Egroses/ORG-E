@@ -1,5 +1,14 @@
 # Backend: spektrum, katalog ve sağlamlık görevleri (15 Kasım)
 
+> **DURUM (15 Kasım): 1-7 arası maddelerin hepsi backend sorumlusu tarafından uygulandı.**
+> Commit'ler: `e75b7f7` (astroquery bağımlılığı, bayrak politikası, `mode=102`, `aperture`), `8a16759` (`/api/catwise`, Gaia
+> `pm_snr`, hızlı hareket eden cisimleri kaçırmayan katalog araması), `3bff812` (CatWISE testinde RA sarma düzeltmesi),
+> `8995ad4` (canlı indirme ilerlemesi `detector_done` / `detector_total` / `eta_s`, API belgesi, testler).
+> **Geçerli sözleşme `backend/docs/spectrum-api.md`'dir** (gerçek önbellek verisinden örnek yanıtlarla); bu belge yalnızca
+> görevin ilk halini ve ölçülmüş analizi saklar. Aşağıdaki onay kutuları görev yazıldığı andaki hallerinde bırakıldı, tek tek
+> güncellenmedi; kodla çelişirse `spectrum-api.md` ve kod geçerlidir.
+> `flagged` anlamı değişti: artık yalnızca sert bozuk bitler (bkz. madde 2).
+
 Bu liste backend sorumlusu içindir. Arayüz tarafı ayrı yürüyor; bu belge yalnızca **backend'in yapması gerekenleri** ve arayüzün
 bunlardan beklediği yanıt biçimlerini anlatır. Mevcut uç noktalar (`/api/patch`, `/api/spectrum`, `/api/lightcurve`, `/api/gaia`,
 `/api/targets`, `/api/resolve`) **bozulmamalı**: aşağıdaki her değişiklik yalnızca *ekleme* olmalı (yeni alan, yeni uç ya da
@@ -23,6 +32,12 @@ Challenge (`backend/docs/challenge.md`) isteğe bağlı olarak şunları öneriy
 - Doğrulama: yeni bir sanal ortamda `pip install -r backend/requirements.txt`, sonra `GET /api/patch?ra=269.446271&dec=4.768197&dets=2,4,6` 200 dönmeli.
 
 ### 2. Spektrumda bayrak politikası (ölçüm yapıldı, nedeni belli)
+> **Çözüldü (15 Kasım):** yeni alanlar `saturated`, `masked_px`, `flag_names`, `lower_limit` eklendi ve `flagged` artık yalnızca sert
+> bozuk bitler demek (NONFUNC, HOT, COLD, PERSIST, OUTLIER, STREAK, SNOWBALL, MISSING_DATA, PHANMISS). Barnard'ın 358 noktasından
+> 40'ı `flagged` (eskiden 358). `TRANSIENT` biti FITS başlığında "Transient detected during SUR" diye tanımlı: pozlama sırasında okumada
+> sıçrama, cismin geçici ya da hareketli olduğu anlamına gelmez; `flag_names`'te gösterilir, nokta atılmaz. Aşağıdaki ölçülmüş analiz
+> (TRANSIENT, NaN pikseller, sayımlar) **eski davranışın analizi olarak** korunuyor; sorun giderildi. Ayrıntı: `backend/docs/spectrum-api.md`, bölüm 1-2.
+
 **Gözlem.** `/api/spectrum` Barnard's Star için 358 nokta döndürüyor ve **358'inin tamamı `flagged: true`**.
 
 **Neden (15 Kasım'da yerel önbellekte ölçüldü; `backend/app/photometry.py`).** `_load()` satır 94 doyma bitlerini de kötü maskeye
