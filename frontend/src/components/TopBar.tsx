@@ -76,7 +76,7 @@ export function LangSwitch() {
   );
 }
 
-function ShareMenu({ url, aladin, realistic }: { url: string; aladin: string; realistic?: boolean }) {
+function ShareMenu({ url, realistic }: { url: string; realistic?: boolean }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -105,7 +105,6 @@ function ShareMenu({ url, aladin, realistic }: { url: string; aladin: string; re
       {open && (
         <div className="menu" role="menu">
           <button type="button" role="menuitem" onClick={copy}><Icon name="copy" size={14} />{copied ? R.shareCopied : realistic ? R.shareCopy : t('share.copySpot')}</button>
-          <a role="menuitem" href={aladin} target="_blank" rel="noreferrer"><Icon name="external" size={14} />{R.shareAladin}</a>
         </div>
       )}
     </div>
@@ -185,7 +184,12 @@ export function TopBar({ results, active, theme, onTheme, onHome, onCases, onExp
               ))}
             </div>
           )}
-          {tool.share && <ShareMenu url={tool.share.url} aladin={tool.share.aladin} realistic={tool.share.realistic} />}
+          {tool.share && <ShareMenu url={tool.share.url} realistic={tool.share.realistic} />}
+          {tool.share && (
+            <a className="btn btn-sm" href={tool.share.aladin} target="_blank" rel="noopener noreferrer" title={R.shareAladin} aria-label={R.shareAladin}>
+              <Icon name="external" size={14} /><span className="lbl">{R.shareAladin}</span>
+            </a>
+          )}
         </div>
       )}
 
