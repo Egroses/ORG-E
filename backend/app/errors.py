@@ -59,3 +59,16 @@ def install_error_handlers(app: FastAPI) -> None:
     async def _http_error(request: Request, exc: StarletteHTTPException):
         code = "not_found" if exc.status_code == 404 else "bad_input"
         return _respond(request, code, str(exc.detail), exc.status_code)
+
+
+def archive_message(exc) -> str:
+    """A short, readable reason for an archive failure (no HTML error pages or stack details)."""
+    import re
+
+    text = str(exc)
+    code = re.search(r"HTTP Code: (\d{3})|\b(50[0-4]|429)\b", text)
+    if code:
+        return (f"The SPHEREx archive (IRSA) is not answering right now (HTTP {code.group(1) or code.group(2)}). "
+                "The five sample targets still work; please try this position again later.")
+    first = re.sub(r"<[^>]+>", " ", text).strip().splitlines()[0] if text.strip() else type(exc).__name__
+    return f"The SPHEREx archive did not answer: {first[:200]}"

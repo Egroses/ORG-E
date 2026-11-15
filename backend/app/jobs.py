@@ -17,7 +17,7 @@ from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
 from . import config, mock
-from .errors import ApiError
+from .errors import ApiError, archive_message
 from . import frames as fallback_frames
 from .frames import mjd_to_date, write_diff_png
 from .models import DisplayRange, ErrorDetail, Frame, Grid, Job, JobRequest, Progress, SkyPosition
@@ -224,7 +224,7 @@ class JobManager:
             return self._fail(job_id, exc.code, exc.message)
         except Exception as exc:  # archive errors come in many types (HTTP, DAL, timeouts)
             log.exception("cutout search failed for job %s", job_id)
-            return self._fail(job_id, "archive_unavailable", f"The SPHEREx archive did not answer: {exc}")
+            return self._fail(job_id, "archive_unavailable", archive_message(exc))
         if not records:
             return self._fail(job_id, "no_coverage", "SPHEREx has no images of this position in this detector yet.")
         stamp = data_stamp([cutout_dir(req)])  # of the manifest the records came from
