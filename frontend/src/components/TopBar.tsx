@@ -31,7 +31,7 @@ export interface ToolControls {
   /** Official name of a position that was looked up by name (shown instead of "Custom position"). */
   customLabel?: string;
   /** Only in Explore: the field of view can be changed. */
-  fov?: { value: number; onChange: (v: number) => void };
+  fov?: { value: number; onChange: (v: number) => void; /** Widest field in degrees (a saved target has data for 6 arcminutes only). */ max?: number };
   share?: { url: string; embedUrl: string; aladin: string; realistic?: boolean };
   /** Realistic mode names targets plainly instead of as game cases. */
   targetLabel?: (c: CaseDef) => string;
@@ -178,13 +178,13 @@ export function TopBar({ results, active, theme, onTheme, onHome, onCases, onExp
           {tool.fov && (
             <div className="seg" role="group" aria-label={t('r.fovTitle')}>
               {FOV_OPTIONS.map((o) => (
-                <button key={o.value} type="button" aria-pressed={tool.fov!.value === o.value} onClick={() => tool.fov!.onChange(o.value)} title={t('tb.fovTitle', { name: o.name, sub: o.sub })}>
+                <button key={o.value} type="button" aria-pressed={tool.fov!.value === o.value} disabled={o.value > (tool.fov!.max ?? 1) + 1e-6} onClick={() => tool.fov!.onChange(o.value)} title={o.value > (tool.fov!.max ?? 1) + 1e-6 ? t('fov.savedMax') : t('tb.fovTitle', { name: o.name, sub: o.sub })}>
                   {Math.round(o.value * 60)}′
                 </button>
               ))}
             </div>
           )}
-          {tool.fov && <FovInput valueDeg={tool.fov.value} onChange={tool.fov.onChange} />}
+          {tool.fov && <FovInput valueDeg={tool.fov.value} onChange={tool.fov.onChange} maxDeg={tool.fov.max} />}
           {tool.share && <ShareMenu url={tool.share.url} embedUrl={tool.share.embedUrl} realistic={tool.share.realistic} />}
           {tool.share && (
             <a className="btn btn-sm" href={tool.share.aladin} target="_blank" rel="noopener noreferrer" title={R.shareAladin} aria-label={R.shareAladin}>

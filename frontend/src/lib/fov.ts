@@ -14,12 +14,12 @@ export type FovCheck =
 export const arcminToDeg = (a: number) => Math.round((a / 60) * 10000) / 10000;
 
 /** Text typed by the visitor (a comma as decimal mark is accepted) to a field size, clamped to 3-15 arcminutes. */
-export function checkFovArcmin(text: string): FovCheck {
+export function checkFovArcmin(text: string, maxArcmin = FOV_MAX_ARCMIN): FovCheck {
   const trimmed = text.trim().replace(',', '.');
   if (trimmed === '') return { ok: false };
   const v = Number(trimmed);
   if (!Number.isFinite(v)) return { ok: false };
-  const arcmin = Math.min(FOV_MAX_ARCMIN, Math.max(FOV_MIN_ARCMIN, v));
+  const arcmin = Math.min(maxArcmin, Math.max(FOV_MIN_ARCMIN, v));
   return { ok: true, arcmin, deg: arcminToDeg(arcmin), clamped: arcmin !== v };
 }
 
@@ -32,6 +32,9 @@ export function parseFovDeg(raw: string | null, fallback = 0.1): number {
   const hi = FOV_MAX_ARCMIN / 60;
   return Math.round(Math.min(hi, Math.max(lo, v)) * 10000) / 10000;
 }
+
+/** Widest field the visitor may ask for: a saved target has data for 6 arcminutes only, any other position is downloaded as asked. */
+export const maxFovDeg = (saved: boolean) => (saved ? SAVED_FOV_DEG : FOV_MAX_ARCMIN / 60);
 
 /** True when the field is wider than the saved cutouts. */
 export const exceedsSaved = (fovDeg: number) => fovDeg > SAVED_FOV_DEG + 1e-6;
