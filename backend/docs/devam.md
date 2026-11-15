@@ -1,45 +1,51 @@
-# Kaldığımız yer (15 Kasım 2026, gece)
+# Kaldığımız yer (15 Kasım 2026, 15:00, kod dondurmadan önce)
 
 Yeni oturumda önce bu dosyayı oku. Kurallar: `backend/CLAUDE.md` (kullanıcıyla Türkçe konuş; kod, commit ve
-README İngilizce; yalnızca `backend/` altında yaz, başka klasör için önce sor).
+README İngilizce). Kullanıcı 15 Kasım'da `pipeline/` için de yetki verdi; kök dosyalar ve frontend için önce sor.
 
-## Durum: Plan A tamamlandı, her şey `main`'de
+## Durum: backend bitti, her şey `main`'de
 
-- Ekip **Plan A**'yı seçti: `imaging/` + `GET /api/patch` + React frontend (Sky Quest). Plan B (Blink,
-  `karisik_frontendli` dalı) seçilmedi.
-- `imaging/` ve gerçek veriyle çalışan frontend `main`'e birleşti (`79ebb33`). Son backend commit'i `e90c78a`.
-- `main` üzerinde kontrol edildi: backend 69 test, imaging 27 test geçiyor; `/api/patch` Barnard duman testi 200.
-- Frontend yerelde açıldı ve beş vaka gerçek SPHEREx verisiyle geliyor ("Gerçek SPHEREx (IRSA)").
-- Önbellek tam: `cache/` içinde 30 birim (5 hedef × 6 dedektör), 3902 FITS. `cache_all.zip`'ten açıldı, git'e girmez.
-- Çalışma ağacı temiz, push'lanmamış bir şey yok.
+- Plan A: `imaging/` + `GET /api/patch` + React frontend (Sky Quest). Frontend gerçek veriyle çalışıyor, beş vaka
+  ayrıca `frontend/public/static/` içindeki kayıtlı kopyalardan da açılıyor (backend kapalıyken).
+- 15 Kasım'da eklenenler: yenileme komutu, canlı sorgu (tüm dedektörler), canlı indirme AWS S3'ten (`pipeline/s3.py`,
+  3 dedektör ~1,7 dk), 102 kanallı tayf + bayrak alanları, `/api/catwise`, Gaia `pm_snr`, katalog alanları repoda,
+  okunur arşiv hata mesajları. Ayrıntı: `backend/docs/spectrum-api.md`, `team-notes.md`.
+- 15:00 kontrolü: backend 88 test, imaging 27 test (`ORG_CACHE` ile), frontend 137 test, tip kontrolü ve derleme geçiyor.
+- **Açık dış sorun:** IRSA'nın SIA/TAP servisleri 15 Kasım ~14:00'ten beri 502 (IRSA kendi eğitim kodunda da). Yeni
+  koordinatlar o düzelene kadar açılmaz; beş vaka etkilenmez. Kontrol: https://irsa.ipac.caltech.edu/SIA/availability
+  (XML dönüyorsa düzelmiştir). Düzelince yapılacak: Vega ya da `40 -10` ile uçtan uca canlı deneme.
 
 ## Bilgisayar açılınca çalıştırma
 
-İki ayrı PowerShell penceresi aç.
+İki ayrı PowerShell penceresi aç. (Bu makinede PowerShell `.ps1` betiklerini engelliyor: `activate` ve `npm`
+yerine aşağıdaki biçimler çalışır. Kalıcı çözüm: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.)
 
 **1. Backend** (önce bu):
 
 ```powershell
-cd D:\nasaProject\ORG-E\backend
-.venv\Scripts\activate
-$env:PREBUILD_ON_START = "1"     # beş vakanın yamalarını açılışta hazırlar, vakalar anında açılır
-uvicorn app.main:app --reload    # http://127.0.0.1:8000/docs
+cd D:
+asaProject\ORG-Eackend
+$env:PREBUILD_ON_START = "1"     # beş vakanın yamaları + tayf kesitleri açılışta hazırlanır (~3 dk, arka planda)
+.venv\Scripts\python -m uvicorn app.main:app --reload    # http://127.0.0.1:8000/docs
 ```
 
-Kontrol: http://127.0.0.1:8000/api/health → `"patch": true`, `"frame_engine": "imaging"`, `"cached_units": 30`.
+Kontrol: http://127.0.0.1:8000/api/health → `"patch": true`, `"frame_engine": "imaging"`, `"cached_units": 30`,
+`"live_queries": true`, `"archive_source": "s3"`.
 
 **2. Frontend:**
 
 ```powershell
-cd D:\nasaProject\ORG-E\frontend
-npm run dev                      # http://localhost:5173
+cd D:
+asaProject\ORG-Erontend
+npm.cmd run dev                  # http://localhost:5173
 ```
 
-Frontend `/api` isteklerini 8000'deki backend'e yönlendirir; backend kapalıysa demo veriye düşer.
-
-**Testler** (`backend` klasöründe): `python -m pytest -q` → 83 passed, 3 skipped (ağ testleri: `NETWORK_TESTS=1`).
+**Testler** (`backend` klasöründe): `.venv\Scripts\python -m pytest -q` → 88 passed, 3 skipped (ağ testleri: `NETWORK_TESTS=1`).
+Imaging: kökte `$env:ORG_CACHE = "D:
+asaProject\ORG-E\cache"; backend\.venv\Scripts\python -m pytest -q imaging/tests`.
 
 **Yeni veriyle yenileme:** `python -m scripts.refresh --check` (rapor), `python -m scripts.refresh` (indir + yeniden üret).
+Katalog alanları: `python -m scripts.gaia_fields`, `python -m scripts.catwise_fields`.
 
 ## Bu makinede kurulu olanlar
 
