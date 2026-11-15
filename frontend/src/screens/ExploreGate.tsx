@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { LoadStep } from '../data/types';
+import type { LiveProgress, LoadStep } from '../data/types';
+import { LiveWait } from '../components/LiveWait';
 import { FOV_OPTIONS, KNOWN } from '../data/catalog';
 import { R } from '../ui/realisticText';
 import { num } from '../i18n';
@@ -9,6 +10,8 @@ interface Props {
   initialText?: string;
   initialFov?: number;
   loading: LoadStep | null;
+  /** Set once the backend says this position is downloaded live (not in the saved set). */
+  live?: LiveProgress | null;
   error?: string | null;
   onSearch: (text: string, fov: number) => string | null;
   onTryCase: () => void;
@@ -18,7 +21,7 @@ interface Props {
 
 const STEPS: Exclude<LoadStep, 'done'>[] = ['finding', 'downloading', 'stacking'];
 
-export function ExploreGate({ initialText = '', initialFov = 0.1, loading, error, onSearch, onTryCase, realistic = false }: Props) {
+export function ExploreGate({ initialText = '', initialFov = 0.1, loading, live, error, onSearch, onTryCase, realistic = false }: Props) {
   const { t } = useI18n();
   const [text, setText] = useState(initialText);
   const [fov, setFov] = useState(initialFov);
@@ -45,11 +48,12 @@ export function ExploreGate({ initialText = '', initialFov = 0.1, loading, error
               </li>
             ))}
           </ol>
+          {live && <LiveWait live={live} />}
           {realistic ? (
-            <p className="t-caption c-3">{R.gateLoading}</p>
+            !live && <p className="t-caption c-3">{R.gateLoading}</p>
           ) : (
             <>
-              <p className="t-caption c-3">{t('gate.wait')}</p>
+              {!live && <p className="t-caption c-3">{t('gate.wait')}</p>}
               <button type="button" className="btn" onClick={onTryCase}>{t('gate.tryCase')}</button>
             </>
           )}

@@ -108,6 +108,6 @@ describe('createRealProvider', () => {
   it('gives up with a friendly error', async () => {
     const fetchImpl = vi.fn(async () => ({ status: 202, ok: true, json: async () => ({ status: 'running' }) }) as unknown as Response);
     await expect(createRealProvider({ base: '', fetchImpl: fetchImpl as unknown as typeof fetch, pollMs: 1, timeoutMs: 10 })
-      .getPatch({ ra: 1, dec: 1, fovDeg: 0.1 })).rejects.toMatchObject({ kind: 'timeout' });
+      .getPatch({ ra: 1, dec: 1, fovDeg: 0.1, cached: true })).rejects.toMatchObject({ kind: 'timeout' });
   });
 });

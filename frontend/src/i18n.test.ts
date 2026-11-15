@@ -172,9 +172,9 @@ describe('sentences built in code', () => {
       expect(msg.length).toBeGreaterThan(10);
     }
     expect(errorText(new DataError('server', { code: 'weird', serverMessage: 'Something odd happened' }))).toBe('Something odd happened');
-    expect(errorText(new DataError('timeout'))).toMatch(/3 minutes/);
+    expect(errorText(new DataError('timeout'))).toMatch(/much longer/);
     setLang('tr', false);
-    expect(errorText(new DataError('timeout'))).toMatch(/3 dakika/);
+    expect(errorText(new DataError('timeout'))).toMatch(/çok daha uzun/);
     expect(errorText(new DataError('unreachable'))).toBe(t('err.unreachable'));
     expect(errorText(new DataError('incomplete'))).toMatch(/eksik/);
     setLang('en', false);

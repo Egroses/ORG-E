@@ -1,7 +1,7 @@
-import type { PatchRequest, SkyDataProvider, SkyPatch, TargetId } from './types';
+import type { LoadOptions, PatchRequest, SkyDataProvider, SkyPatch, TargetId } from './types';
 import { mockProvider } from './mockProvider';
 import { GROUPINGS, type GroupId } from './catalog';
-import { apiIsUp, createRealProvider } from './realProvider';
+import { apiIsUp, createRealProvider, isAbort } from './realProvider';
 import { DataError } from './errors';
 
 export type DataMode = 'real' | 'mock';
@@ -31,7 +31,7 @@ export const getDataMode = () => mode;
 export const isMockForced = forcedMock;
 
 export const provider: SkyDataProvider = {
-  async getPatch(req, onStep) {
+  async getPatch(req, onStep, opts) {
     await dataModeReady;
     if (mode === 'mock') {
       // Realistic mode shows demo data only when it was asked for with ?data=mock, never because the service is down.
@@ -39,10 +39,10 @@ export const provider: SkyDataProvider = {
       return mockProvider.getPatch(req, onStep);
     }
     try {
-      return await real.getPatch(req, onStep);
+      return await real.getPatch(req, onStep, opts);
     } catch (e) {
       // The five practice cases must always open: fall back to demo data (the "Demo data" chip then shows).
-      if (req.cached && !req.strict) return mockProvider.getPatch(req, onStep);
+      if (req.cached && !req.strict && !isAbort(e)) return mockProvider.getPatch(req, onStep);
       throw e;
     }
   },
@@ -54,13 +54,18 @@ export const patchKey = (r: PatchRequest) =>
   `${r.ra.toFixed(6)},${r.dec.toFixed(6)},${r.fovDeg},${r.gapDays ?? ''},${r.maxSpanDays ?? ''},${(r.dets ?? [2, 4, 6]).join('')},${r.strict ? 's' : ''}`;
 const keyOf = patchKey;
 
-export function loadPatch(req: PatchRequest, onStep?: Parameters<SkyDataProvider['getPatch']>[1]) {
+const live = new Map<string, AbortSignal | undefined>();
+
+export function loadPatch(req: PatchRequest, onStep?: Parameters<SkyDataProvider['getPatch']>[1], opts?: LoadOptions) {
   const key = keyOf(req);
   const hit = cache.get(key);
-  if (hit) return hit;
-  const p = provider.getPatch(req, onStep);
+  // A load that was stopped (the visitor left the screen) is not reused.
+  if (hit && !live.get(key)?.aborted) return hit;
+  const p = provider.getPatch(req, onStep, opts);
   cache.set(key, p);
-  p.catch(() => cache.delete(key));
+  live.set(key, opts?.signal);
+  const forget = (drop: boolean) => { if (cache.get(key) !== p) return; live.delete(key); if (drop) cache.delete(key); };
+  p.then(() => forget(false), () => forget(true));
   return p;
 }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Chip, LoadStep, PatchRequest, Pt, SkyPatch, TargetId } from './data/types';
+import type { Chip, LiveProgress, LoadStep, PatchRequest, Pt, SkyPatch, TargetId } from './data/types';
 import { CASES, FOV_OPTIONS, KNOWN } from './data/catalog';
 import { caseRequest, loadPatch, patchKey, realisticRequest } from './data/provider';
 import { answerKey, evaluate } from './sky/analysis';
@@ -19,6 +19,7 @@ import {
 } from './state/viewState';
 import { R } from './ui/realisticText';
 import { errorText } from './data/errors';
+import { isAbort } from './data/realProvider';
 import { useI18n } from './i18n/react';
 import { Reveal } from './screens/Reveal';
 import { FieldReport } from './screens/FieldReport';
@@ -42,6 +43,8 @@ type Route =
 
 interface LoadState {
   step: LoadStep | null;
+  /** Progress of a live download (only a position that is not saved has one). */
+  live?: LiveProgress | null;
   patch: SkyPatch | null;
   /** What went wrong, kept as data: the text is made in the current language when it is shown. */
   error: { err: unknown; strict: boolean } | null;
@@ -180,9 +183,15 @@ export default function App() {
     const k = loadKey(exploreReq);
     const empty: LoadState = { step: null, patch: null, error: null };
     const set = (s: Partial<LoadState>) => setLoads((prev) => ({ ...prev, [k]: { ...empty, ...prev[k], ...s } }));
-    loadPatch(exploreReq, (step) => set({ step, error: null }))
-      .then((patch) => set({ patch, step: 'done', error: null }))
-      .catch((e: unknown) => set({ step: null, patch: null, error: { err: e, strict: !!exploreReq.strict } }));
+    // Leaving the screen stops the polling (a live download can take 15 minutes or more).
+    const ctl = new AbortController();
+    loadPatch(exploreReq, (step) => set({ step, error: null }), { signal: ctl.signal, onProgress: (live) => set({ live }) })
+      .then((patch) => set({ patch, step: 'done', live: null, error: null }))
+      .catch((e: unknown) => {
+        if (ctl.signal.aborted || isAbort(e)) return;
+        set({ step: null, live: null, patch: null, error: { err: e, strict: !!exploreReq.strict } });
+      });
+    return () => ctl.abort();
   }, [exploreReq]);
 
   const navigate = useCallback((r: Route) => {
@@ -455,6 +464,7 @@ export default function App() {
           initialText={queryText}
           initialFov={req?.fovDeg ?? 0.1}
           loading={req && !load?.error ? load?.step ?? 'finding' : null}
+          live={load?.live ?? null}
           error={load?.error ? (load.error.strict ? R.loadError(errorText(load.error.err)) : t('gate.loadError', { msg: errorText(load.error.err) })) : null}
           realistic={realistic}
           onSearch={handleSearch}
