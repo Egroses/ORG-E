@@ -67,7 +67,9 @@ Claude dokümanları:
 ## Alınmış kararlar (tekrar tartışma)
 
 - Plan A (yukarıda).
-- Demo `LIVE_QUERIES=0`: yalnızca önbellekteki konumlar; canlı sorguda `/api/patch` tek dedektör, fazlası 400.
+- **Canlı sorgu açık (15 Kasım kararı, 14 Kasım'daki `LIVE_QUERIES=0` kararının yerine).** `/api/patch` önbellekte
+  olmayan konumda istenen tüm dedektörleri sırayla indirir (dedektör başına 2–5 dk). Tek dedektör sınırı kaldırıldı.
+  Frontend'in 180 sn zaman aşımı uzatılmalı (frontend sahibi, `team-notes.md`).
 - JSON'da NaN/Infinity yok; ölçülemeyen değer `null`. 1000 bayttan büyük yanıtlar gzip'li.
 - Sunucu/yayın konusu kullanıcı açmadıkça konuşulmaz.
 

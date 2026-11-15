@@ -145,9 +145,6 @@ class PatchManager:
         if missing and not self.live:
             return {"id": job_id, "status": "failed",
                     "error": {"code": "archive_unavailable", "message": LIVE_OFF_MESSAGE}}
-        if missing and len(params["dets"]) > 1:
-            raise ApiError("bad_input", "This position is not cached, so its images must come from the archive "
-                                        "(about 4-5 minutes per detector). Ask for one detector at a time.")
         with self.lock:
             state = self.jobs.get(job_id)  # another request may have started it meanwhile
             if self._busy(state):
@@ -169,6 +166,36 @@ class PatchManager:
         log.warning("patch %s failed: %s %s", job_id, code, message)
         self._set(job_id, status="failed", error={"code": code, "message": message}, failed_at=time.time())
 
+    @staticmethod
+    def _download_missing(params, progress):
+        """Fetch the detectors not in the cache from the archive, one after the other.
+
+        The archive is listed once for the position (one SIA query for all detectors) and each
+        detector goes through the pipeline's sync_unit (3 connections, resumes where it stopped).
+        Progress counts the files of every missing detector together, so it runs once from 0 to total.
+        """
+        missing = missing_detectors(params)
+        if not missing:
+            return
+        from pipeline import archive
+        from pipeline.download import sync_unit
+
+        progress(0, 0, 0)
+        images = archive.list_images(params["ra"], params["dec"])
+        size = CUTOUT_DEG if params["target"] else params["fov"]
+        per_det = {det: [i for i in images if i.detector == det] for det in missing}
+        total = sum(len(v) for v in per_det.values())
+        before = {"done": 0, "failed": 0}
+        progress(0, total, 0)
+        for det in missing:
+            def step(done, _total, failed, base=dict(before)):
+                progress(base["done"] + done, total, base["failed"] + failed)
+            result = sync_unit(unit_dir(params, det), params["ra"], params["dec"], size, det, per_det[det],
+                               f"patch D{det}", on_progress=step)
+            before["done"] += result["cached"] + result["downloaded"]
+            before["failed"] += len(result["failed"])
+            progress(before["done"], total, before["failed"])
+
     def _run(self, job_id, params):
         self._set(job_id, status="running")
 
@@ -176,14 +203,8 @@ class PatchManager:
             self._set(job_id, progress={"total": total, "done": done, "failed": failed})
 
         try:
-            records = {}
-            for det in params["dets"]:
-                directory = unit_dir(params, det)
-                if not (directory / "manifest.csv").exists():
-                    from pipeline.cutouts import get_cutouts
-                    size = CUTOUT_DEG if params["target"] else params["fov"]
-                    get_cutouts(params["ra"], params["dec"], size, det, on_progress=progress)
-                records[det] = _records_from_manifest(directory)
+            self._download_missing(params, progress)
+            records = {det: _records_from_manifest(unit_dir(params, det)) for det in params["dets"]}
             stamp = data_stamp(unit_dir(params, d) for d in params["dets"])
         except Exception as exc:  # archive errors come in many types (HTTP, DAL, timeouts)
             log.exception("cutout search failed for patch %s", job_id)

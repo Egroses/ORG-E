@@ -7,6 +7,10 @@ Ekibe gönderilecek özet doküman: https://claude.ai/artifact/Kisqc232fpfzyH9zk
 
 ## Arayüz (frontend)
 
+- [ ] **Canlı sorgu açılıyor (15 Kasım kararı) — `/api/patch` sözleşmesinde değişiklik.** Önbellekte olmayan konumda artık **birden fazla dedektör istenebilir**; eski "tek dedektör, fazlası 400 `bad_input`" kuralı kaldırıldı. Backend konumu arşivde bir kez listeler, eksik dedektörleri sırayla indirir (3 bağlantı, aynı anda tek yama işi; ikinci ziyaretçi sırada bekler). `progress` tüm dedektörlerin dosyalarını birlikte sayar, 0'dan `total`'e bir kez gider; sonra yığma aşamasında imaging kendi ilerlemesini yazar. İndirilen konum diskte kalır, ikinci açılış anında olur.
+  - **Frontend'de gereken (frontend sahibi):** `realProvider.ts` 180 sn'de vazgeçiyor (`timeoutMs`). Canlı indirme dedektör başına 2–5 dk: oyun modu (`2,4,6`) ~10 dk, gerçekçi mod (`1..6`) ~20–30 dk sürebilir. Zaman aşımı kaldırılmalı ya da ~40 dk'ya çıkarılmalı; ekranda "ilk açılış birkaç dakika sürebilir" yazılmalı.
+  - `docs/patch-api.md` bu kuralı zaten "sunucu tek dedektöre sınırlayabilir" diye isteğe bağlı yazıyor, yani sözleşme bozulmuyor. 36–39. satırlardaki "demo için `LIVE_QUERIES=0` önerilir" cümlesi ve süre tahmini Ramazan isterse güncellenebilir (kök dosya, ben dokunmuyorum).
+
 - [ ] **Frontend'in kullandığı uç noktalar backend'e karşı denendi (15 Kasım).** `/api/patch`, `/api/gaia`, `/api/spectrum`, `/api/health`: yanıt biçimleri birebir uyuşuyor. Backend'de düzeltilenler ve frontend'e kalanlar:
   - **Gaia (düzeltildi, backend):** ESA Gaia arşivi 15 Kasım'da yanıt vermiyordu, katalog katmanı sessizce kayboluyordu. Artık beş hedefin alanı repodaki dosyalardan geliyor (arşive gitmez, ~20 ms); diğer konumlarda ESA yanıt vermezse GAVO (Heidelberg) yansısı deneniyor. Sözleşme aynı.
   - **Tayf hızı (düzeltildi, backend):** ilk istek ~16 sn sürüyordu ve ziyaret değişince (konum biraz kayınca) yine 16 sn. Artık kesitler bellekte tutuluyor: aynı hedefte yeni konum 0,2–1,3 sn. `PREBUILD_ON_START=1` ile açılışta yükleniyor (~3 dk, ~300 MB).

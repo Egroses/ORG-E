@@ -112,11 +112,42 @@ def test_live_off_uncached_fails_at_once(fake):
     assert r.json()["error"]["code"] == "archive_unavailable" and not fake.calls
 
 
-def test_live_query_takes_one_detector_only(fake):
+def test_live_query_downloads_every_missing_detector(fake, monkeypatch):
+    import pipeline.archive
+    import pipeline.download
+
     fake.manager.live = True
-    (fake.cache / "D2" / "manifest.csv").unlink()
-    r = client.get("/api/patch", params={"ra": 10, "dec": 10, "dets": "2,4"})
-    assert r.status_code == 400 and r.json()["error"]["code"] == "bad_input"
+    for det in (2, 4):
+        (fake.cache / f"D{det}" / "manifest.csv").unlink()
+    listings, synced, seen = [], [], []
+    image = lambda det, n: types.SimpleNamespace(detector=det, file=f"{det}_{n}.fits")
+
+    def list_images(ra, dec):
+        listings.append((ra, dec))
+        return [image(2, 0), image(2, 1), image(4, 0), image(6, 0)]
+
+    def sync_unit(directory, ra, dec, size, det, images, label, on_progress=None):
+        synced.append((det, [i.file for i in images]))
+        for n, _ in enumerate(images, 1):
+            on_progress(n, len(images), 0)
+        (directory / "manifest.csv").write_text(
+            "file,mjd,detector,wavelength_um,collection,version,obs_id\n"
+            f"a.fits,61000.0,{det},4.5,qr3,1,x\n", encoding="utf-8")
+        return {"cached": 0, "downloaded": len(images), "failed": [], "errors": {}}
+
+    monkeypatch.setattr(pipeline.archive, "list_images", list_images)
+    monkeypatch.setattr(pipeline.download, "sync_unit", sync_unit)
+    original = fake.manager._set
+    monkeypatch.setattr(fake.manager, "_set", lambda job_id, **f: (seen.append(f.get("progress")), original(job_id, **f)))
+
+    r = client.get("/api/patch", params={"ra": 10, "dec": 10, "dets": "2,4,6"})
+    assert r.status_code == 202  # several detectors are fine now
+    assert poll({"ra": 10, "dec": 10, "dets": "2,4,6"}).json()["status"] == "done"
+    assert len(listings) == 1  # the archive is listed once for the position
+    assert synced == [(2, ["2_0.fits", "2_1.fits"]), (4, ["4_0.fits"])]  # only the missing ones, D6 is cached
+    counts = [(p["done"], p["total"]) for p in seen if p and p["total"] == 3]
+    assert counts[-1] == (3, 3) and [d for d, _ in counts] == sorted(d for d, _ in counts)  # one run 0 -> 3
+    assert fake.calls == [[2, 4, 6]]
 
 
 def test_no_readable_images_is_no_coverage(fake):

@@ -72,8 +72,8 @@ viewer (`index.html`), so it works on any static host as an offline fallback.
 
 `LIVE_QUERIES=0` turns archive downloads off: cached positions (the test targets) still open,
 any other position answers `archive_unavailable` at once. Default `1` (positions not in the
-cache are downloaded, 2-5 min). `GET /api/health` reports the setting as `live_queries`.
-The public demo runs with `LIVE_QUERIES=0` (`render.yaml`, team decision 14 Nov).
+cache are downloaded, 2-5 min per detector). `GET /api/health` reports the setting as `live_queries`.
+Team decision 15 Nov: the tool runs with live queries on (the default).
 
 ## Refreshing with new SPHEREx data
 
@@ -119,8 +119,11 @@ Errors: HTTP status + `{"error": {"code": "...", "message": "..."}}` with codes
 The numbers come from the team's `imaging/` package (`make_patch`, `encode_patch`). The backend
 validates the request, snaps positions within 10 arcsec of a test target to its cache, builds the
 patch in the background and keeps it as gzipped JSON in `data/patch/` (sent as it is to clients
-that accept gzip). A failed patch is reported for 60 s before a new request tries again. Live
-queries take one detector only (`400 bad_input` otherwise). With `PREBUILD_ON_START=1` the patches
+that accept gzip). A failed patch is reported for 60 s before a new request tries again.
+For a position not in the cache the archive is listed once and the missing detectors are
+downloaded one after the other (pipeline `sync_unit`, 3 connections, one patch build at a time;
+`progress` counts the files of all of them). Count on 2-5 minutes per detector; once downloaded,
+the position stays in `cache/custom/` and opens at once. With `PREBUILD_ON_START=1` the patches
 the frontend asks for on the five targets (`dets=2,4,6` and `1..6`) are built at start.
 
 `/api/jobs` frames also come from `imaging.make_frames` when the package is installed; if it is
