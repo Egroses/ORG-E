@@ -5,7 +5,7 @@ import { measureSource } from './measure';
 import { mjdToYear, pixelToSky } from './astro';
 import { synthPatch } from '../test/synth';
 import { adaptGaia } from '../data/gaiaApi';
-import { wiseMarks, isFastMover } from './wiseMarks';
+import { wiseMarks, isFastMover, isPossiblySplit } from './wiseMarks';
 
 beforeAll(() => setLang('en', false));
 
@@ -67,5 +67,22 @@ describe('WISE marks', () => {
   });
   it('ignores non-WISE sources', () => {
     expect(wiseMarks(patch, 0, [star(patch.center.ra, patch.center.dec, 0, 0)]).rings).toHaveLength(0);
+  });
+});
+
+describe('possibly split fast movers', () => {
+  it('draws entries faster than 2 arcsec a year faint, dashed-style and without a label', () => {
+    const patch = synthPatch([{ x: [20, 20, 20], y: [24, 22.5, 21], flux: [300, 300, 300] }]);
+    const w = (id: string, pmRa: number, pmDec: number) => ({
+      id, name: id, ra: patch.center.ra, dec: patch.center.dec, pmRa, pmDec, gmag: null, w2: 13, pmSnr: 50, origin: 'wise' as const,
+    });
+    expect(isPossiblySplit({ pmRa: 1500, pmDec: 1500 })).toBe(true);
+    expect(isPossiblySplit({ pmRa: 500, pmDec: 500 })).toBe(false);
+    const marks = wiseMarks(patch, 0, [w('slow', 300, 0), w('fast', 8000, 0)]);
+    const slow = marks.rings.find((r) => r.label);
+    const fast = marks.rings.find((r) => !r.label);
+    expect(slow?.muted).toBeUndefined();
+    expect(fast?.muted).toBe(true);
+    expect(marks.arrows.some((a) => a.muted)).toBe(true);
   });
 });

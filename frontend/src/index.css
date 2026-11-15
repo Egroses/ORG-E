@@ -601,6 +601,7 @@ input[type='range'] { width: 100px; height: 16px; accent-color: var(--accent); c
 .mk.wise { border-radius: 1px; border: 1.5px solid var(--wise); }
 .layer[aria-pressed='true'] .mk.wise { border-color: var(--wise); }
 .sky-ring.square { border-radius: 0; }
+.sky-ring.muted { opacity: .45; border-style: dashed; box-shadow: none; }
 .sky-arrow { stroke-linecap: round; }
 .pm-snr-low { color: var(--warn, #b45f06); }
 .tbl-scroll .cat-table th, .tbl-scroll .cat-table td { white-space: normal; padding-right: 6px; }

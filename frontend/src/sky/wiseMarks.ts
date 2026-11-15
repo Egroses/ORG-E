@@ -14,6 +14,12 @@ const MIN_ARROW_PM = 30;
 /** Fast movers with a significant motion first (these are the ones worth looking at), then by W2 brightness. */
 export const isFastMover = (s: CatalogueSource) => Math.hypot(s.pmRa, s.pmDec) >= FAST_PM && !pmUnreliable(s);
 const FAST_PM = 1000;
+/**
+ * Entries that move faster than this (mas/yr, 2 arcsec per year) are drawn faint, dashed and without a label: CatWISE often splits
+ * such a mover into several entries (and a very bright star's halo adds false ones), so each of them may be only a piece of one track.
+ */
+export const SPLIT_PM = 2000;
+export const isPossiblySplit = (s: { pmRa: number; pmDec: number }) => Math.hypot(s.pmRa, s.pmDec) >= SPLIT_PM;
 export const wiseOrder = (a: CatalogueSource, b: CatalogueSource) =>
   Number(isFastMover(b)) - Number(isFastMover(a)) || (a.w2 ?? 99) - (b.w2 ?? 99);
 
@@ -36,11 +42,12 @@ export function wiseMarks(patch: SkyPatch, epoch: number, sources: CatalogueSour
     if (!(p.x >= 0 && p.y >= 0 && p.x < patch.size && p.y < patch.size)) continue;
     inView.push(s);
     if (rings.length >= maxMarks) continue;
-    rings.push({ x: p.x, y: p.y, color: WISE_COLOR, r: 2.6 * (6.15 / patch.pixelScale) / 2 + 1, square: true, label: s.w2 != null ? `W2 ${num(s.w2, 1)}` : undefined });
+    const split = isPossiblySplit(s);
+    rings.push({ x: p.x, y: p.y, color: WISE_COLOR, r: 2.6 * (6.15 / patch.pixelScale) / 2 + 1, square: true, muted: split || undefined, label: !split && s.w2 != null ? `W2 ${num(s.w2, 1)}` : undefined });
     if (Math.hypot(s.pmRa, s.pmDec) >= MIN_ARROW_PM && !pmUnreliable(s)) {
       const later = sourceAt(s, year + ARROW_YEARS);
       const q = skyToPixel(patch, later.ra, later.dec);
-      arrows.push({ x: p.x, y: p.y, dx: q.x - p.x, dy: q.y - p.y, color: WISE_COLOR });
+      arrows.push({ x: p.x, y: p.y, dx: q.x - p.x, dy: q.y - p.y, color: WISE_COLOR, muted: split || undefined });
     }
   }
   return { rings, arrows, inView };

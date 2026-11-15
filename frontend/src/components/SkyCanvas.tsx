@@ -16,6 +16,8 @@ export interface Ring {
   dashed?: boolean;
   /** Square outline (WISE) instead of a circle (Gaia, known objects). */
   square?: boolean;
+  /** Drawn faint: an entry that may be one piece of a split fast mover. */
+  muted?: boolean;
 }
 
 /** A proper-motion arrow in image pixels, from the source to where it will be after the stated time. */
@@ -25,6 +27,8 @@ export interface Arrow {
   dx: number;
   dy: number;
   color: string;
+  /** Drawn faint, like its mark. */
+  muted?: boolean;
 }
 
 interface Props {
@@ -371,7 +375,7 @@ export function SkyCanvas({
               const len = Math.hypot(a.dx, a.dy) || 1;
               const ux = a.dx / len, uy = a.dy / len, h = Math.min(len * 0.4, size / 45);
               return (
-                <g key={i} className="sky-arrow" stroke={a.color} strokeWidth={size / 260} fill="none">
+                <g key={i} className="sky-arrow" stroke={a.color} strokeWidth={size / 260} fill="none" opacity={a.muted ? 0.4 : 1}>
                   <line x1={x0} y1={y0} x2={x1} y2={y1} />
                   <path d={`M${x1 - ux * h - uy * h * 0.5} ${y1 - uy * h + ux * h * 0.5}L${x1} ${y1}L${x1 - ux * h + uy * h * 0.5} ${y1 - uy * h - ux * h * 0.5}`} />
                 </g>
@@ -392,7 +396,7 @@ export function SkyCanvas({
           return (
             <span
               key={i}
-              className={`sky-ring${ring.dashed ? ' dashed' : ''}${ring.square ? ' square' : ''}`}
+              className={`sky-ring${ring.dashed ? ' dashed' : ''}${ring.square ? ' square' : ''}${ring.muted ? ' muted' : ''}`}
               style={{
                 left: `${((ring.x + 0.5 - r) / size) * 100}%`,
                 top: `${((ring.y + 0.5 - r) / size) * 100}%`,

@@ -115,7 +115,7 @@ export function Playfield({ mode, patch, caseDef, onReveal, onSaveObservation, o
   const [stretch, setStretch] = useState<StretchFn>('asinh');
   const [compare, setCompare] = useState<CompareMode>('blink');
   const [showKnown, setShowKnown] = useState(true);
-  const [showWise, setShowWise] = useState(true);
+  const [showWise, setShowWise] = useState(false);
   const [mark, setMark] = useState<Pt | null>(null);
   const [chips, setChips] = useState<Chip[]>([]);
   const [sheet, setSheet] = useState<Sheet>('find');

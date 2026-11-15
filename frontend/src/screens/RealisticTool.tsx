@@ -88,7 +88,7 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
   const [magnify, setMagnify] = useState(false);
   const [invert, setInvert] = useState(initial.invert ?? false);
   const [showCat, setShowCat] = useState(true);
-  const [showWise, setShowWise] = useState(true);
+  const [showWise, setShowWise] = useState(false);
   const [aperture, setAperture] = useState<Aperture>(initial.aperture);
   const [specView, setSpecView] = useState<SpectrumView>(initial.spec);
   const [mark, setMark] = useState<Pt | null>(null);
