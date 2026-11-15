@@ -11,7 +11,7 @@ import {
 import { useCatalogue } from '../data/useCatalogue';
 import { savedCopyText } from '../data/staticProvider';
 import { useSpectrum, type Aperture, type SpectrumView } from '../data/spectrumApi';
-import { wiseMarks } from '../sky/wiseMarks';
+import { isFastMover, wiseMarks } from '../sky/wiseMarks';
 import { measureBest } from '../sky/measure';
 import { checkCatalogue, sourcePixels, type CatalogueSource } from '../sky/catalogue';
 import { findChanges, type FieldChange } from '../sky/changes';
@@ -184,7 +184,13 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
   }, [patch, epoch, catalogue.sources, nEp, lang]);
 
   const wise = useMemo(() => wiseMarks(patch, epoch, catalogue.wise.sources, MAX_MARKS), [patch, epoch, catalogue.wise.sources]);
-  const tableRows = useMemo(() => (showWise ? [...catalogueMarks.inView, ...wise.inView] : catalogueMarks.inView), [catalogueMarks.inView, wise.inView, showWise]);
+  const tableRows = useMemo(() => {
+    if (!showWise) return catalogueMarks.inView;
+    const known = catalogueMarks.inView.filter((s) => s.origin === 'known');
+    const gaia = catalogueMarks.inView.filter((s) => s.origin !== 'known');
+    // significant fast movers first: the entries CatWISE may have split a fast mover into must not be buried under the Gaia list
+    return [...known, ...wise.inView.filter(isFastMover), ...gaia, ...wise.inView.filter((s) => !isFastMover(s))];
+  }, [catalogueMarks.inView, wise.inView, showWise]);
 
   const measureRings = useMemo<Ring[]>(() => {
     if (!measurement || measurement.status !== 'ok') return [];

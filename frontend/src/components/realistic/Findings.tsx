@@ -331,14 +331,16 @@ export function CatalogueSection({ patch, epoch, catalogue, rows, verdict, measu
       {rows.length === 0 ? <p className="empty">{R.catEmpty}</p> : (
         <div className="tbl-scroll cat-scroll">
           <table className="mini cat-table">
-            <thead><tr><th>{R.catCols.name}</th><th className="num">{t('sui.colMag')}</th><th className="num">{R.catCols.pm}</th><th className="num" title={t('sui.pmHelp')}>{t('sui.colSnr')}</th><th>{R.catCols.pos}</th></tr></thead>
+            <thead><tr><th>{t('sui.colSourceMag')}</th><th className="num">{R.catCols.pm}</th><th className="num" title={t('sui.pmHelp')}>{t('sui.colSnr')}</th><th>{R.catCols.pos}</th></tr></thead>
             <tbody>
               {rows.map((s) => {
                 const p = sourceAt(s, year);
                 return (
                   <tr key={s.id}>
-                    <td><button type="button" className="btn-link" onClick={() => onPick(s)} title={R.catClick}>{s.name}</button></td>
-                    <td className="num">{magText(s)}</td>
+                    <td>
+                      <button type="button" className="btn-link" onClick={() => onPick(s)} title={R.catClick}>{s.origin === 'wise' ? s.name.replace(/^CatWISE /, '') : s.name}</button>
+                      {s.origin !== 'known' && <><br /><small className="c-3">{s.origin === 'wise' ? `WISE · ${magText(s)}` : magText(s)}</small></>}
+                    </td>
                     <td className="num">{num(motionArcsecPerYear(s) * 1000, 0)}</td>
                     <td className="num"><PmSnr s={s} /></td>
                     <td className="mono">{formatRa(p.ra)}<br />{formatDec(p.dec)}</td>
