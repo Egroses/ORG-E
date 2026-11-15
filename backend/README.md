@@ -24,7 +24,32 @@ Aug 2026) copied from a real job by `scripts/make_mock_pngs.py`.
 
 ## Run
 
-Python 3.12 (same as the pipeline). The backend calls the pipeline in-process, so the
+**First, the data for the five practice targets.** The server normally downloads SPHEREx images live from the
+archive (`LIVE_QUERIES=1`). To list the images it needs IRSA's search service, which returned 502 errors on
+15 Nov 2026; while it is down, only positions already in `cache/` work. So download the saved cache of the five
+targets once from the [`cache-v1` release](https://github.com/Egroses/ORG-E/releases/tag/cache-v1) and unpack it
+at the repo root. It creates `cache/<target>/D<n>/...` (180 MB zip, 508 MB unpacked).
+
+```bash
+# from the repo root
+curl -L -o cache_all.zip https://github.com/Egroses/ORG-E/releases/download/cache-v1/cache_all.zip
+sha256sum cache_all.zip   # must print 688c9330cc9f5962d8d2db06dfb18e9987a34c1bf5ca91a2eedab8b2aa8957e3
+unzip cache_all.zip
+```
+
+Windows PowerShell:
+
+```powershell
+# from the repo root
+$ProgressPreference = 'SilentlyContinue'   # makes Invoke-WebRequest much faster
+Invoke-WebRequest https://github.com/Egroses/ORG-E/releases/download/cache-v1/cache_all.zip -OutFile cache_all.zip
+(Get-FileHash cache_all.zip -Algorithm SHA256).Hash   # must be 688C9330CC9F5962D8D2DB06DFB18E9987A34C1BF5CA91A2EEDAB8B2AA8957E3
+Expand-Archive cache_all.zip -DestinationPath .
+```
+
+When the server is running, http://localhost:8000/api/health should show `"cached_units": 30`.
+
+Then the server itself. Python 3.12 (same as the pipeline). The backend calls the pipeline in-process, so the
 pipeline's locked package versions are installed first.
 
 ```bash

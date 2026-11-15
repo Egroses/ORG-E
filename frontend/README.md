@@ -108,7 +108,7 @@ Sky Quest now combines its game flow with the measurement tools and design appro
 ## Run against real data
 
 ```
-# terminal 1: the real backend on port 8000 (cache setup: docs/backend-patch-tasks.md)
+# terminal 1: the real backend on port 8000 (download the data first: backend/README.md, section "Run")
 cd backend && uvicorn app.main:app --port 8000
 # terminal 2
 cd frontend && npm run dev        # /api is proxied to http://localhost:8000
