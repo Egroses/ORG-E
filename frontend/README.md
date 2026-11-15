@@ -28,7 +28,7 @@ Everything goes through one interface in `src/data/types.ts`:
 
 ```ts
 interface SkyDataProvider {
-  getPatch(req: { ra; dec; fovDeg; cached? }, onStep?): Promise<SkyPatch>;
+  getPatch(req: PatchRequest, onStep?, opts?: { signal?; onProgress? }): Promise<SkyPatch>;
 }
 ```
 
