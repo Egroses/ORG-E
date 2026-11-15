@@ -23,8 +23,7 @@ yerine aşağıdaki biçimler çalışır. Kalıcı çözüm: `Set-ExecutionPoli
 **1. Backend** (önce bu):
 
 ```powershell
-cd D:
-asaProject\ORG-Eackend
+cd D:\nasaProject\ORG-E\backend
 $env:PREBUILD_ON_START = "1"     # beş vakanın yamaları + tayf kesitleri açılışta hazırlanır (~3 dk, arka planda)
 .venv\Scripts\python -m uvicorn app.main:app --reload    # http://127.0.0.1:8000/docs
 ```
@@ -35,14 +34,12 @@ Kontrol: http://127.0.0.1:8000/api/health → `"patch": true`, `"frame_engine": 
 **2. Frontend:**
 
 ```powershell
-cd D:
-asaProject\ORG-Erontend
+cd D:\nasaProject\ORG-E\frontend
 npm.cmd run dev                  # http://localhost:5173
 ```
 
 **Testler** (`backend` klasöründe): `.venv\Scripts\python -m pytest -q` → 88 passed, 3 skipped (ağ testleri: `NETWORK_TESTS=1`).
-Imaging: kökte `$env:ORG_CACHE = "D:
-asaProject\ORG-E\cache"; backend\.venv\Scripts\python -m pytest -q imaging/tests`.
+Imaging: kökte `$env:ORG_CACHE = "D:\nasaProject\ORG-E\cache"; backend\.venv\Scripts\python -m pytest -q imaging/tests`.
 
 **Yeni veriyle yenileme:** `python -m scripts.refresh --check` (rapor), `python -m scripts.refresh` (indir + yeniden üret).
 Katalog alanları: `python -m scripts.gaia_fields`, `python -m scripts.catwise_fields`.
