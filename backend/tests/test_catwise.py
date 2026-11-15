@@ -1,3 +1,6 @@
+import os
+
+import pytest
 import requests
 from fastapi.testclient import TestClient
 
@@ -63,3 +66,9 @@ def test_bad_input_and_archive_down(monkeypatch):
     monkeypatch.setattr(catwise_module, "_query", archive_down)
     r = client.get("/api/catwise", params={"ra": 1, "dec": 2})
     assert r.status_code == 503 and r.json()["error"]["code"] == "archive_unavailable"
+
+
+@pytest.mark.skipif(not os.environ.get("NETWORK_TESTS"), reason="set NETWORK_TESTS=1 to query CatWISE")
+def test_catwise_live():
+    rows = catwise_module.query_services(WISE0855.ra + 0.0238, WISE0855.dec - 0.003, 0.003, 50)  # its 2015 place
+    assert any(abs(float(r["pmra"]) + 8.0) < 0.5 for r in rows)  # arcsec/yr

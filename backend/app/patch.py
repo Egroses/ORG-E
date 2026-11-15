@@ -171,8 +171,10 @@ class PatchManager:
         """Fetch the detectors not in the cache from the archive, one after the other.
 
         The archive is listed once for the position (one SIA query for all detectors) and each
-        detector goes through the pipeline's sync_unit (3 connections, resumes where it stopped).
-        Progress counts the files of every missing detector together, so it runs once from 0 to total.
+        detector goes through the pipeline's sync_unit (3 connections). Files already on disk are
+        kept, so a download cut by a restart continues where it stopped on the next request.
+        Progress counts the files of every missing detector together (0 to total once) and adds
+        `detector_done` / `detector_total` and `eta_s` (seconds left at the speed so far).
         """
         missing = missing_detectors(params)
         if not missing:
@@ -180,27 +182,42 @@ class PatchManager:
         from pipeline import archive
         from pipeline.download import sync_unit
 
-        progress(0, 0, 0)
+        extra = {"detector_done": 0, "detector_total": len(missing)}
+        progress(0, 0, 0, **extra)
         images = archive.list_images(params["ra"], params["dec"])
         size = CUTOUT_DEG if params["target"] else params["fov"]
         per_det = {det: [i for i in images if i.detector == det] for det in missing}
         total = sum(len(v) for v in per_det.values())
         before = {"done": 0, "failed": 0}
-        progress(0, total, 0)
+        started, first_done = time.time(), None
+
+        def report(done, failed):
+            nonlocal first_done
+            if first_done is None:
+                first_done = done  # files already on disk do not tell the speed
+            fetched = done - first_done
+            eta = None
+            if fetched >= 5:
+                eta = round((time.time() - started) / fetched * (total - done - failed))
+            progress(done, total, failed, **extra, eta_s=eta)
+
+        report(0, 0)
         for det in missing:
             def step(done, _total, failed, base=dict(before)):
-                progress(base["done"] + done, total, base["failed"] + failed)
+                report(base["done"] + done, base["failed"] + failed)
             result = sync_unit(unit_dir(params, det), params["ra"], params["dec"], size, det, per_det[det],
                                f"patch D{det}", on_progress=step)
             before["done"] += result["cached"] + result["downloaded"]
             before["failed"] += len(result["failed"])
-            progress(before["done"], total, before["failed"])
+            extra["detector_done"] += 1
+            report(before["done"], before["failed"])
 
     def _run(self, job_id, params):
         self._set(job_id, status="running")
 
-        def progress(done, total, failed):
-            self._set(job_id, progress={"total": total, "done": done, "failed": failed})
+        def progress(done, total, failed, **extra):
+            """extra (download only): detector_done, detector_total, eta_s; the stacking step has none."""
+            self._set(job_id, progress={"total": total, "done": done, "failed": failed, **extra})
 
         try:
             self._download_missing(params, progress)

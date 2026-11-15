@@ -7,6 +7,16 @@ Ekibe gönderilecek özet doküman: https://claude.ai/artifact/Kisqc232fpfzyH9zk
 
 ## Arayüz (frontend)
 
+- [ ] **`docs/backend-spectrum-catalog-tasks.md` uygulandı (15 Kasım).** Ayrıntı, gerçek örnek yanıtlar ve ölçümler: `backend/docs/spectrum-api.md` (kök `docs/`'a dokunmadım; istenirse oraya kopyalanabilir). Hepsi ekleme; tek anlam değişikliği `flagged`.
+  - **`flagged` artık yalnızca sert bozuk bit** (NONFUNC, HOT, COLD, PERSIST, OUTLIER, STREAK, SNOWBALL, MISSING_DATA, PHANMISS). Doyma `saturated`, boş piksel `masked_px`, ikisinden biri `lower_limit`; tüm bitler `flag_names`'te. Barnard: 358 noktanın 40'ı `flagged` (eskiden 358). Arayüz içi boş çizimi `flagged` yerine `lower_limit`'e bağlamak isteyebilir.
+  - **`TRANSIENT` biti** FITS başlığına göre "Transient detected during SUR": pozlama sırasında okumada sıçrama; cismin geçici ya da hareketli olduğu anlamına gelmiyor. Gösteriliyor, nokta atılmıyor.
+  - **`/api/spectrum?mode=102`** (6 × 17 kanal, kanal başına medyan, `n_skipped`, boş kanal `null`) ve `aperture=1..3` (spektrum ve ışık eğrisi). `mode` yoksa yanıt aynı.
+  - **WISE 0855 tayfına dikkat:** 2 piksellik açıklıkta kısa dalga boylarındaki ~1 mJy kahverengi cüceye ait değil; 7,3″ ötedeki Gaia yıldızı (G=16,3) açıklığa giriyor. 1 piksellik açıklıkta düşüyor. Arayüzde açıklanmalı.
+  - **`GET /api/catwise`** (W1, W2, öz hareket mas/yıl, `pm_snr`); beş hedef repodaki dosyalardan. WISE 0855 CatWISE'ta iz boyunca birkaç parça halinde, `pm_snr` 42–90; Gaia'da yok.
+  - **Gaia `pm_snr`** eklendi. Ayrıca iki katalogda da düzeltme: küçük yarıçapta hızlı hareket eden yıldızlar (eski konumla seçildiği için) kaçıyordu.
+  - **Canlı indirme ilerlemesi:** `progress`'e `detector_done`, `detector_total`, `eta_s` eklendi (yalnızca indirme sırasında).
+  - `backend/requirements.txt`'e `astroquery==0.4.11` eklendi.
+
 - [ ] **Canlı sorgu açılıyor (15 Kasım kararı) — `/api/patch` sözleşmesinde değişiklik.** Önbellekte olmayan konumda artık **birden fazla dedektör istenebilir**; eski "tek dedektör, fazlası 400 `bad_input`" kuralı kaldırıldı. Backend konumu arşivde bir kez listeler, eksik dedektörleri sırayla indirir (3 bağlantı, aynı anda tek yama işi; ikinci ziyaretçi sırada bekler). `progress` tüm dedektörlerin dosyalarını birlikte sayar, 0'dan `total`'e bir kez gider; sonra yığma aşamasında imaging kendi ilerlemesini yazar. İndirilen konum diskte kalır, ikinci açılış anında olur.
   - **Frontend'de gereken (frontend sahibi):** `realProvider.ts` 180 sn'de vazgeçiyor (`timeoutMs`). Canlı indirme dedektör başına 2–5 dk: oyun modu (`2,4,6`) ~10 dk, gerçekçi mod (`1..6`) ~20–30 dk sürebilir. Zaman aşımı kaldırılmalı ya da ~40 dk'ya çıkarılmalı; ekranda "ilk açılış birkaç dakika sürebilir" yazılmalı.
   - `docs/patch-api.md` bu kuralı zaten "sunucu tek dedektöre sınırlayabilir" diye isteğe bağlı yazıyor, yani sözleşme bozulmuyor. 36–39. satırlardaki "demo için `LIVE_QUERIES=0` önerilir" cümlesi ve süre tahmini Ramazan isterse güncellenebilir (kök dosya, ben dokunmuyorum).
