@@ -187,7 +187,7 @@ export function TopBar({ results, active, theme, onTheme, onHome, onCases, onExp
           {tool.fov && <FovInput valueDeg={tool.fov.value} onChange={tool.fov.onChange} />}
           {tool.share && <ShareMenu url={tool.share.url} embedUrl={tool.share.embedUrl} realistic={tool.share.realistic} />}
           {tool.share && (
-            <a className="btn btn-sm" href={tool.share.aladin} target="_blank" rel="noopener noreferrer" title={R.shareAladin} aria-label={R.shareAladin}>
+            <a className="btn btn-sm" href={tool.share.aladin} target="_blank" rel="noopener noreferrer" title={t('tb.aladinHint')} aria-label={R.shareAladin}>
               <Icon name="external" size={14} /><span className="lbl">{R.shareAladin}</span>
             </a>
           )}

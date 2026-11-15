@@ -18,6 +18,7 @@ export const en = {
   'resolve.err.unreachable': 'Could not reach the name lookup service. The five practice names and coordinates still work.',
   'resolve.err.service': 'The name lookup service reported a problem. Try again in a little while, or type coordinates.',
   'r.shareAladin': 'Open in Aladin Lite',
+  'tb.aladinHint': 'Opens the same position in Aladin Lite. Its sky surveys were taken years ago: a fast star such as Barnard’s Star (about 10″ a year) is not at this spot there, it sits several arcminutes away.',
   // ---- embed mode and sharing ----
   'embed.label': 'Sky Quest picture',
   'embed.loading': 'Loading the sky…',
@@ -54,6 +55,7 @@ export const tr: Record<keyof typeof en, string> = {
   'resolve.err.unreachable': 'Ad arama servisine ulaşılamadı. Beş alıştırma hedefinin adları ve koordinatlar yine çalışır.',
   'resolve.err.service': 'Ad arama servisi bir sorun bildirdi. Biraz sonra yeniden dene ya da koordinat yaz.',
   'r.shareAladin': 'Aladin’de aç',
+  'tb.aladinHint': 'Aynı konumu Aladin Lite’ta açar. Oradaki gökyüzü taramaları yıllar önce çekildi: Barnard Yıldızı gibi hızlı bir yıldız (yılda yaklaşık 10″) bu noktada değildir, birkaç yay dakikası ötededir.',
   'embed.label': 'Sky Quest görüntüsü',
   'embed.loading': 'Gökyüzü yükleniyor…',
   'embed.noPosition': 'Bu gömülü sayfanın adresinde bir konum (ra ve dec) olmalı.',
