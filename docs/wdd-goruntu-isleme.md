@@ -408,3 +408,35 @@ Başvuru betikleri `E:\nasa\feasibility\scripts` içinde: `cutlib.py` (okuma ve 
 - Dedektörleri renk kanalı yaparak renkli kare (örneğin D2 mavi, D4 yeşil, D6 kırmızı).
 - Bir dedektörün dalga boyu aralığını alt dilimlere bölüp dilim başına kare.
 - Kare başına kapsama haritasını metadata olarak sunmak.
+
+## Güncelleme (15 Kasım)
+
+Bu doküman tasarım aşamasında yazıldı. `main`'de (396df1a) görüntü işleme ve onu kullanan arayüz için şu an olan ve olmayan
+(kaynak: `imaging/README.md`, `frontend/README.md`, `backend/docs/spectrum-api.md`, kod):
+
+**Var olanlar**
+
+- `imaging/` paketi (`make_patch`, `encode_patch`, `make_frames`) `main`'de; `GET /api/patch` onu kullanır, `make_frames` hata
+  verirse backend `app/frames.py`'ye döner.
+- **Gerçekçi mod:** 6 dedektör, birim MJy/sr, ortak ızgara 3,075″, kuzey üstte doğu solda; ziyaret gruplaması ziyaretçinin seçimi.
+- **102 kanallı tayf paneli:** açıklık 1, 2 ya da 3 piksel; doymuş ya da boş pikselli kanallar alt sınır olarak gösterilir.
+  `flagged` artık yalnızca sert bozuk bit demektir; doyma `saturated`, boş piksel `masked_px`, ikisinden biri `lower_limit`.
+- **CatWISE bindirmesi** ve öz hareket anlamlılığı (`pm_snr`).
+- `/api/resolve` ile arama; canlı sorgu bekleme ekranı (kayıtlı olmayan konumda 25 dakika, kayıtlı hedefte 3 dakika zaman aşımı);
+  kayıtlı kopyalar (`frontend/public/static`, sıra: canlı -> kayıtlı kopya -> dürüst hata; `?data=mock` dışında demo veri yok);
+  Aladin bağlantısı, `embed=1` ve gömme kodunu kopyalama, özel alan boyutu 3-15 yay dakikası, tekerlek/sürükleme/+- yakınlaştırma
+  ve klavye, TR/EN.
+- Bilim notu: WISE 0855'in ampirik açıklık sinyal/gürültüsü yaklaşık 8σ'dır; sabit toplama zaten yaklaşık 7,6σ, kaydır-topla yaklaşık
+  8,0σ verir. Barnard'ın tek dönemde "%32 değişimi" doyma artefaktıdır (D6 %1 içinde sabit); R Draconis tüm bantlarda doymuştur.
+
+**Yapılmayanlar ve sınırlar (açıkça)**
+
+- S3'ten doğrudan okuma **yapılmadı**.
+- 102 kanalın sınırları **nominal** (resmî SPHEREx kanal sınırları değil).
+- 0,25 dereceden geniş alanlar yok.
+- Zodyak katmanı için uç nokta yok (zodyak modeli yalnızca her karenin arka plan çıkarmasında kullanılır).
+- Aladin `survey` parametresi yok sayılıyor (DSS2 renkli ile açılır); WiseView bağlantısı eklenmedi.
+- Tam erişilebilirlik denetimi yapılmadı.
+- `imaging/README.md`'ye göre doğrulanmayanlar: canlı (önbellekte olmayan) veri, beş hedef dışındaki SPHEREx verisi, 1, 3 ve 5
+  numaralı dedektörlerle `imaging` testleri (hiç çalıştırılmadı; backend'in 102 kanallı tayfı ve gerçekçi mod bu dedektörleri kullanır,
+  kendi ölçümü `spectrum-api.md`'dedir), uvicorn altında işlem havuzunun davranışı.

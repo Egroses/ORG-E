@@ -463,3 +463,42 @@ frontend/
 - Karelerden GIF indirme.
 - Kullanıcının bulduğu bir aday için koordinatı ve ekran görüntüsünü dışa aktarma.
 - Türkçe dil seçeneği (İngilizce varsayılan kalmak koşuluyla).
+
+## Güncelleme (15 Kasım)
+
+Bu doküman tasarım aşamasında yazıldı; aşağıdaki liste 15 Kasım'da `main`'de (396df1a) gerçekten bulunanı ve bulunmayanı
+özetler. Kaynak: `frontend/README.md`, `backend/docs/spectrum-api.md`, depodaki kod. Yukarıdaki bölümlerle çelişirse bu bölüm
+geçerlidir (örneğin arayüz artık Türkçe de var, `embed=1` yapıldı, gerçek veri geliyor).
+
+**Var olanlar**
+
+- **Gerçekçi (Realistic) mod:** Oyun | Gerçekçi anahtarı. Gerçekçi mod 6 dedektörün hepsini ister (`dets=1,...,6`), birimler MJy/sr,
+  ziyaret gruplaması (İnce 10/30, Normal 30/60, Kaba 60/150 gün) ziyaretçinin seçimidir. Oyun modu `dets=2,4,6` ister.
+- **102 kanallı tayf paneli:** `/api/spectrum?mode=102` (6 dedektör × 17 kanal), açıklık 1, 2 ya da 3 piksel, doymuş ya da
+  boş pikselli kanallarda alt sınır (lower limit) gösterimi.
+- **CatWISE bindirmesi ve öz hareket anlamlılığı:** `/api/catwise` bindirmesi (W1/W2) ve Gaia/CatWISE kaynakları için `pm_snr`;
+  katalog tablosunda hızlı hareket eden WISE kaynakları önce listelenir.
+- **İsim arama:** bilinmeyen metinler `/api/resolve` ile çözülür; beş hedefin 10″ içindeki sonuçlar hedefin tam sayılarını kullanır.
+- **Canlı sorgu bekleme ekranı:** gerçek ilerleme çubuğu, geçen süre, "dedektör N / M"; önbellekte/kayıtlı olmayan konum için
+  25 dakika, kayıtlı hedef için 3 dakika zaman aşımı; ekrandan çıkınca yoklama durur. Ölçülen örnek: RA 10, Dec 10, `dets=2,4,6`
+  yaklaşık 15,5 dakika.
+- **Kayıtlı kopyalar (statik):** `frontend/public/static` altında beş hedefin `/api/patch` ve `/api/gaia` yanıtları; "kayıtlı kopya"
+  notu gösterilir. Veri sırası: **canlı servis -> kayıtlı kopya -> dürüst hata**. Sahte (demo) veri yok; yalnızca geliştirici
+  anahtarı `?data=mock` demo veriyi açar ve her ekranda kırmızı şerit gösterir.
+- **Aladin Lite bağlantısı** (Paylaş menüsünün yanında), **`embed=1`** gömme modu ve "Gömme kodunu kopyala".
+- **Özel alan boyutu:** 3-15 yay dakikası (adreste `fov` 0,05-0,25 derece).
+- **Gökyüzü resminde** fare tekerleği, sürükleme ve +/- ile yakınlaştırma; klavye (Tab, +/-, 0, oklar, Boşluk, Enter).
+- **TR / EN** dil anahtarı (`?lang=tr|en`).
+
+**Yapılmayanlar ve sınırlar (açıkça)**
+
+- S3'ten doğrudan okuma **yapılmadı**.
+- 102 kanalın sınırları **nominal** (kendi hesabımız: logaritmik aralıklı, ölçülen kapsama göre); resmî SPHEREx kanal sınırlarıyla
+  tam örtüşmez.
+- 0,25 dereceden geniş alanlar yok (sunucu `fov > 0,25` için `400 bad_input` döner).
+- Zodyak ışığı katmanı için uç nokta yok.
+- Aladin `survey` parametresi **yok sayılıyor**: sayfa her zaman DSS2 renkli ile açılıyor (AllWISE'ı ziyaretçi kendi menüsünden seçer).
+- WiseView bağlantısı eklenmedi.
+- Tam erişilebilirlik denetimi yapılmadı (elle ve testlerle bakılanlar `frontend/README.md`'de; WCAG uyumu iddia edilmez).
+- Gerçek ekran okuyucu, Safari ve Firefox, dokunmatik iki parmakla yakınlaştırma ve gerçekten 15 dakika süren bir canlı indirme
+  denenmedi.
