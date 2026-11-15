@@ -1,5 +1,6 @@
 import type { CatalogueSource } from '../sky/catalogue';
 import { API_BASE } from './realProvider';
+import { getStaticGaiaRows } from './staticProvider';
 
 // The only place that knows the shape of GET /api/gaia (backend/app/models.py GaiaSource):
 // [{source_id, ra, dec, gmag, pmra, pmdec}], positions already moved to 2026.0, proper motion in mas/yr.
@@ -33,13 +34,15 @@ export function adaptGaia(rows: unknown): CatalogueSource[] {
   return out;
 }
 
-/** Returns null when the service is unavailable, so the feature can hide itself. */
+/** Returns null when neither the service nor a saved copy can answer, so the feature can hide itself.
+ *  Order: /api/gaia, then the saved <target>.gaia.json when the position matches a practice target. */
 export async function fetchGaia(ra: number, dec: number, radiusDeg: number, base = API_BASE): Promise<CatalogueSource[] | null> {
   try {
     const res = await fetch(`${base}/api/gaia?ra=${ra}&dec=${dec}&radius=${radiusDeg}`);
-    if (!res.ok) return null;
-    return adaptGaia(await res.json());
+    if (res.ok) return adaptGaia(await res.json());
   } catch {
-    return null;
+    // fall through to the saved copy
   }
+  const saved = await getStaticGaiaRows(ra, dec);
+  return saved ? adaptGaia(saved) : null;
 }

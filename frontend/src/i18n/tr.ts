@@ -3,7 +3,8 @@ import { en } from './en';
 import { tr as app } from './parts/app';
 import { tr as data } from './parts/data';
 import { tr as realistic } from './parts/realistic';
+import { tr as frontB } from './parts/front-b';
 
 export type Dict = Record<keyof typeof en, string>;
 
-export const tr: Dict = { ...app, ...data, ...realistic };
+export const tr: Dict = { ...app, ...data, ...realistic, ...frontB };

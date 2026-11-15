@@ -9,6 +9,7 @@ import {
   CandidatesSection, CatalogueSection, ChangesSection, DataSection, PhotometrySection, SourceSection, SpectrumSection,
 } from '../components/realistic/Findings';
 import { useCatalogue } from '../data/useCatalogue';
+import { savedCopyText } from '../data/staticProvider';
 import { useSpectrum } from '../data/spectrumApi';
 import { measureBest } from '../sky/measure';
 import { checkCatalogue, sourcePixels, type CatalogueSource } from '../sky/catalogue';
@@ -310,6 +311,7 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
             </div>
             <span className="sky-band" style={{ borderColor: bandObj.color }}><i style={{ background: bandObj.color }} />{bandObj.id} · {num(bandObj.rangeUm[0], 2)}–{num(bandObj.rangeUm[1], 2)} µm</span>
             {patch.source === 'mock' && <span className="sky-chip sky-chip-bottom">{R.demoChip}</span>}
+            {savedCopyText(patch) && <span className="sky-chip sky-chip-bottom sky-chip-saved" role="status">{savedCopyText(patch)}</span>}
             {missingHere && compare === 'blink' && <span className="sky-chip sky-chip-nodata">{R.noPhotoChip}</span>}
           </SkyCanvas>
         </div>

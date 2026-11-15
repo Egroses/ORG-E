@@ -1,0 +1,518 @@
+{
+ "generated_at": "2026-11-15T09:34:24.261Z",
+ "api_base_note": "Exported from http://localhost:8000 (GET /api/patch and /api/gaia); payloads are verbatim API answers. Re-run: npm run export-static -- --api <url>",
+ "targets": [
+  {
+   "id": "barnard",
+   "ra": 269.446271,
+   "dec": 4.768197
+  },
+  {
+   "id": "epsindb",
+   "ra": 331.096658,
+   "dec": -56.800657
+  },
+  {
+   "id": "wise0855",
+   "ra": 133.759871,
+   "dec": -7.242252
+  },
+  {
+   "id": "rwaur",
+   "ra": 76.95659,
+   "dec": 30.401293
+  },
+  {
+   "id": "rdra",
+   "ra": 248.167233,
+   "dec": 66.755024
+  }
+ ],
+ "files": [
+  {
+   "file": "patch/barnard.game.json",
+   "target": "barnard",
+   "kind": "game",
+   "group": null,
+   "dets": [
+    2,
+    4,
+    6
+   ],
+   "gap_days": 30,
+   "max_span_days": 60,
+   "fov": 0.1,
+   "ra": 269.446271,
+   "dec": 4.768197,
+   "bytes": 823008,
+   "epochs": 3,
+   "data_release": {
+    "collections": {
+     "dr1": 118,
+     "qr3": 60,
+     "dr1_deep": 0,
+     "qr3_deep": 0
+    },
+    "latest_mjd": 61305.628687
+   }
+  },
+  {
+   "file": "patch/barnard.realistic.normal.json",
+   "target": "barnard",
+   "kind": "realistic",
+   "group": "normal",
+   "dets": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "gap_days": 30,
+   "max_span_days": 60,
+   "fov": 0.1,
+   "ra": 269.446271,
+   "dec": 4.768197,
+   "bytes": 1645172,
+   "epochs": 3,
+   "data_release": {
+    "collections": {
+     "dr1": 239,
+     "qr3": 119,
+     "dr1_deep": 0,
+     "qr3_deep": 0
+    },
+    "latest_mjd": 61305.628687
+   }
+  },
+  {
+   "file": "patch/barnard.realistic.coarse.json",
+   "target": "barnard",
+   "kind": "realistic",
+   "group": "coarse",
+   "dets": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "gap_days": 60,
+   "max_span_days": 150,
+   "fov": 0.1,
+   "ra": 269.446271,
+   "dec": 4.768197,
+   "bytes": 1645172,
+   "epochs": 3,
+   "data_release": {
+    "collections": {
+     "dr1": 239,
+     "qr3": 119,
+     "dr1_deep": 0,
+     "qr3_deep": 0
+    },
+    "latest_mjd": 61305.628687
+   }
+  },
+  {
+   "file": "patch/barnard.gaia.json",
+   "target": "barnard",
+   "kind": "gaia",
+   "radius_deg": 0.07500000000000001,
+   "ra": 269.446271,
+   "dec": 4.768197,
+   "bytes": 58053,
+   "data_release": null
+  },
+  {
+   "file": "patch/epsindb.game.json",
+   "target": "epsindb",
+   "kind": "game",
+   "group": null,
+   "dets": [
+    2,
+    4,
+    6
+   ],
+   "gap_days": 30,
+   "max_span_days": 60,
+   "fov": 0.1,
+   "ra": 331.096658,
+   "dec": -56.800657,
+   "bytes": 1005852,
+   "epochs": 4,
+   "data_release": {
+    "collections": {
+     "dr1": 172,
+     "qr3": 60,
+     "dr1_deep": 0,
+     "qr3_deep": 0
+    },
+    "latest_mjd": 61315.478742
+   }
+  },
+  {
+   "file": "patch/epsindb.realistic.normal.json",
+   "target": "epsindb",
+   "kind": "realistic",
+   "group": "normal",
+   "dets": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "gap_days": 30,
+   "max_span_days": 60,
+   "fov": 0.1,
+   "ra": 331.096658,
+   "dec": -56.800657,
+   "bytes": 2010693,
+   "epochs": 4,
+   "data_release": {
+    "collections": {
+     "dr1": 338,
+     "qr3": 120,
+     "dr1_deep": 0,
+     "qr3_deep": 0
+    },
+    "latest_mjd": 61315.478742
+   }
+  },
+  {
+   "file": "patch/epsindb.realistic.coarse.json",
+   "target": "epsindb",
+   "kind": "realistic",
+   "group": "coarse",
+   "dets": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "gap_days": 60,
+   "max_span_days": 150,
+   "fov": 0.1,
+   "ra": 331.096658,
+   "dec": -56.800657,
+   "bytes": 2010693,
+   "epochs": 4,
+   "data_release": {
+    "collections": {
+     "dr1": 338,
+     "qr3": 120,
+     "dr1_deep": 0,
+     "qr3_deep": 0
+    },
+    "latest_mjd": 61315.478742
+   }
+  },
+  {
+   "file": "patch/epsindb.gaia.json",
+   "target": "epsindb",
+   "kind": "gaia",
+   "radius_deg": 0.07500000000000001,
+   "ra": 331.096658,
+   "dec": -56.800657,
+   "bytes": 6548,
+   "data_release": null
+  },
+  {
+   "file": "patch/wise0855.game.json",
+   "target": "wise0855",
+   "kind": "game",
+   "group": null,
+   "dets": [
+    2,
+    4,
+    6
+   ],
+   "gap_days": 30,
+   "max_span_days": 60,
+   "fov": 0.1,
+   "ra": 133.759871,
+   "dec": -7.242252,
+   "bytes": 822998,
+   "epochs": 3,
+   "data_release": {
+    "collections": {
+     "dr1": 129,
+     "qr3": 0,
+     "dr1_deep": 0,
+     "qr3_deep": 0
+    },
+    "latest_mjd": 61174.287884
+   }
+  },
+  {
+   "file": "patch/wise0855.realistic.normal.json",
+   "target": "wise0855",
+   "kind": "realistic",
+   "group": "normal",
+   "dets": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "gap_days": 30,
+   "max_span_days": 60,
+   "fov": 0.1,
+   "ra": 133.759871,
+   "dec": -7.242252,
+   "bytes": 1645167,
+   "epochs": 3,
+   "data_release": {
+    "collections": {
+     "dr1": 258,
+     "qr3": 0,
+     "dr1_deep": 0,
+     "qr3_deep": 0
+    },
+    "latest_mjd": 61174.287884
+   }
+  },
+  {
+   "file": "patch/wise0855.realistic.coarse.json",
+   "target": "wise0855",
+   "kind": "realistic",
+   "group": "coarse",
+   "dets": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "gap_days": 60,
+   "max_span_days": 150,
+   "fov": 0.1,
+   "ra": 133.759871,
+   "dec": -7.242252,
+   "bytes": 1645167,
+   "epochs": 3,
+   "data_release": {
+    "collections": {
+     "dr1": 258,
+     "qr3": 0,
+     "dr1_deep": 0,
+     "qr3_deep": 0
+    },
+    "latest_mjd": 61174.287884
+   }
+  },
+  {
+   "file": "patch/wise0855.gaia.json",
+   "target": "wise0855",
+   "kind": "gaia",
+   "radius_deg": 0.07500000000000001,
+   "ra": 133.759871,
+   "dec": -7.242252,
+   "bytes": 9557,
+   "data_release": null
+  },
+  {
+   "file": "patch/rwaur.game.json",
+   "target": "rwaur",
+   "kind": "game",
+   "group": null,
+   "dets": [
+    2,
+    4,
+    6
+   ],
+   "gap_days": 30,
+   "max_span_days": 60,
+   "fov": 0.1,
+   "ra": 76.95659,
+   "dec": 30.401293,
+   "bytes": 823005,
+   "epochs": 3,
+   "data_release": {
+    "collections": {
+     "dr1": 113,
+     "qr3": 54,
+     "dr1_deep": 0,
+     "qr3_deep": 0
+    },
+    "latest_mjd": 61299.896563
+   }
+  },
+  {
+   "file": "patch/rwaur.realistic.normal.json",
+   "target": "rwaur",
+   "kind": "realistic",
+   "group": "normal",
+   "dets": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "gap_days": 30,
+   "max_span_days": 60,
+   "fov": 0.1,
+   "ra": 76.95659,
+   "dec": 30.401293,
+   "bytes": 1645174,
+   "epochs": 3,
+   "data_release": {
+    "collections": {
+     "dr1": 226,
+     "qr3": 109,
+     "dr1_deep": 0,
+     "qr3_deep": 0
+    },
+    "latest_mjd": 61299.896563
+   }
+  },
+  {
+   "file": "patch/rwaur.realistic.coarse.json",
+   "target": "rwaur",
+   "kind": "realistic",
+   "group": "coarse",
+   "dets": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "gap_days": 60,
+   "max_span_days": 150,
+   "fov": 0.1,
+   "ra": 76.95659,
+   "dec": 30.401293,
+   "bytes": 1645174,
+   "epochs": 3,
+   "data_release": {
+    "collections": {
+     "dr1": 226,
+     "qr3": 109,
+     "dr1_deep": 0,
+     "qr3_deep": 0
+    },
+    "latest_mjd": 61299.896563
+   }
+  },
+  {
+   "file": "patch/rwaur.gaia.json",
+   "target": "rwaur",
+   "kind": "gaia",
+   "radius_deg": 0.07500000000000001,
+   "ra": 76.95659,
+   "dec": 30.401293,
+   "bytes": 34322,
+   "data_release": null
+  },
+  {
+   "file": "patch/rdra.game.json",
+   "target": "rdra",
+   "kind": "game",
+   "group": null,
+   "dets": [
+    2,
+    4,
+    6
+   ],
+   "gap_days": 60,
+   "max_span_days": 150,
+   "fov": 0.1,
+   "ra": 248.167233,
+   "dec": 66.755024,
+   "bytes": 914528,
+   "epochs": 4,
+   "data_release": {
+    "collections": {
+     "dr1": 205,
+     "qr3": 63,
+     "dr1_deep": 612,
+     "qr3_deep": 366
+    },
+    "latest_mjd": 61308.46255
+   }
+  },
+  {
+   "file": "patch/rdra.realistic.normal.json",
+   "target": "rdra",
+   "kind": "realistic",
+   "group": "normal",
+   "dets": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "gap_days": 30,
+   "max_span_days": 60,
+   "fov": 0.1,
+   "ra": 248.167233,
+   "dec": 66.755024,
+   "bytes": 2742280,
+   "epochs": 9,
+   "data_release": {
+    "collections": {
+     "dr1": 413,
+     "qr3": 126,
+     "dr1_deep": 1225,
+     "qr3_deep": 729
+    },
+    "latest_mjd": 61310.291841
+   }
+  },
+  {
+   "file": "patch/rdra.realistic.coarse.json",
+   "target": "rdra",
+   "kind": "realistic",
+   "group": "coarse",
+   "dets": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "gap_days": 60,
+   "max_span_days": 150,
+   "fov": 0.1,
+   "ra": 248.167233,
+   "dec": 66.755024,
+   "bytes": 1828038,
+   "epochs": 4,
+   "data_release": {
+    "collections": {
+     "dr1": 413,
+     "qr3": 126,
+     "dr1_deep": 1225,
+     "qr3_deep": 729
+    },
+    "latest_mjd": 61310.291841
+   }
+  },
+  {
+   "file": "patch/rdra.gaia.json",
+   "target": "rdra",
+   "kind": "gaia",
+   "radius_deg": 0.07500000000000001,
+   "ra": 248.167233,
+   "dec": 66.755024,
+   "bytes": 6484,
+   "data_release": null
+  }
+ ]
+}

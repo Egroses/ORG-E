@@ -3,6 +3,7 @@ import { mockProvider } from './mockProvider';
 import { GROUPINGS, type GroupId } from './catalog';
 import { apiIsUp, createRealProvider } from './realProvider';
 import { DataError } from './errors';
+import { getStaticPatch } from './staticProvider';
 
 export type DataMode = 'real' | 'mock';
 
@@ -34,13 +35,20 @@ export const provider: SkyDataProvider = {
   async getPatch(req, onStep) {
     await dataModeReady;
     if (mode === 'mock') {
+      if (forcedMock()) return mockProvider.getPatch(req, onStep);
+      // The service is down: the saved copy of a practice target, if there is one, is real data.
+      const saved = await getStaticPatch(req);
+      if (saved) { onStep?.('done'); return saved; }
       // Realistic mode shows demo data only when it was asked for with ?data=mock, never because the service is down.
-      if (req.strict && !forcedMock()) throw new DataError('noService');
+      if (req.strict) throw new DataError('noService');
       return mockProvider.getPatch(req, onStep);
     }
     try {
       return await real.getPatch(req, onStep);
     } catch (e) {
+      // The live answer failed (network, 5xx, "failed"): try the saved copy of the target, then (Game only) demo data.
+      const saved = await getStaticPatch(req);
+      if (saved) { onStep?.('done'); return saved; }
       // The five practice cases must always open: fall back to demo data (the "Demo data" chip then shows).
       if (req.cached && !req.strict) return mockProvider.getPatch(req, onStep);
       throw e;

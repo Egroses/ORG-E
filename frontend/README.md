@@ -186,3 +186,21 @@ Visit labels and windows are computed from the MJD numbers (`data/epochs.ts`), n
 Sentences built in code are structured data formatted at render time (`truthText`, `verdictText`, `changeAmountText`).
 Limits: server `warnings` are shown as received (English); candidates saved before this change keep their English verdict sentence;
 CSV column names stay English.
+
+## Saved copies (static fallback)
+
+When the live service cannot answer, the five practice targets still open from files in `public/static/`
+(`index.json`, `patch/<target>.game.json`, `patch/<target>.realistic.<normal|coarse>.json`, `patch/<target>.gaia.json`).
+They are verbatim `/api/patch` and `/api/gaia` answers (hosts gzip them; they are not pre-gzipped), made by:
+
+    npm run export-static -- --api http://localhost:8000 [--only barnard,rdra] [--groups fine,normal,coarse]
+
+(Node 18+, no dependencies; polls 202 every 2 s, 10 min timeout per file; fov 0.1, the exact `pipeline/targets.json` positions,
+Game = detectors 2,4,6 with 30/60 days (R Draconis 60/150), Realistic = detectors 1-6 with the grouping presets.)
+`src/data/staticProvider.ts` matches a request by position (within 10 arcsec), field, detector set and grouping.
+Order: live answer, else saved copy (Game, Realistic and Explore), else (Game only) demo data; Realistic never shows demo data.
+`?data=mock` still forces demo data. A patch from a saved copy carries `savedCopy` and the screens show
+"Showing a saved copy from <date> (live service unavailable)" next to where the "Demo data" chip would be. Gaia: `/api/gaia`, else `<target>.gaia.json`, else the built-in five.
+Size: 23 MB for 20 files. The Realistic "Fine" grouping (10/30 days) was left out to stay under 25 MB (it would add 13 MB), so with the service
+down, Fine shows an error; Normal and Coarse work. Only fov 0.1 is saved. Explore in Game view (no grouping in the request) gets the Game copy.
+Re-run the export after the data changes.

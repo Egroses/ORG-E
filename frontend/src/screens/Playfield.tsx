@@ -17,6 +17,7 @@ import { Rich } from '../components/Term';
 import { findChanges, type FieldChange } from '../sky/changes';
 import type { StretchFn } from '../sky/render';
 import { useCatalogue } from '../data/useCatalogue';
+import { savedCopyText } from '../data/staticProvider';
 import { mjdToDateText, pct1 } from '../lib/format';
 import type { Candidate, Observation } from '../state/progress';
 
@@ -376,6 +377,7 @@ export function Playfield({ mode, patch, caseDef, onReveal, onSaveObservation, o
             </div>
             <span className="sky-band" style={{ borderColor: bandObj.color }}><i style={{ background: bandObj.color }} />{bandObj.name} {bandObj.label}</span>
             {patch.source === 'mock' && <span className="sky-chip sky-chip-bottom">{t('r.demoChip')}</span>}
+            {savedCopyText(patch) && <span className="sky-chip sky-chip-bottom sky-chip-saved" role="status">{savedCopyText(patch)}</span>}
             {missingHere && <span className="sky-chip sky-chip-nodata">{t('pf.noPhotoBand')}</span>}
           </SkyCanvas>
         </div>

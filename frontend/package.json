@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "export-static": "node scripts/export-static.mjs",
     "test": "vitest run",
     "preview": "vite preview"
   },

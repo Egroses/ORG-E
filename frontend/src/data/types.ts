@@ -65,6 +65,8 @@ export interface SkyPatch {
   warnings?: string[];
   /** Exposures stacked per [epoch][band] (real data only). */
   imageCounts?: number[][];
+  /** Set when the patch comes from a saved copy exported earlier (live service unavailable). */
+  savedCopy?: { generatedAt: string };
   source: 'mock' | 'irsa';
 }
 

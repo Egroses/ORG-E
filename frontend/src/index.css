@@ -310,6 +310,7 @@ hr.div { height: 1px; margin: 0; border: 0; background: var(--border); align-sel
 .sky-band i { width: 8px; height: 8px; border-radius: 50%; }
 .sky-chip { position: absolute; padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,.7); font: 500 12px/1.4 var(--sans); pointer-events: none; }
 .sky-chip-bottom { left: 10px; bottom: 40px; }
+.sky-chip-saved { max-width: calc(100% - 20px); white-space: normal; background: rgba(60,40,0,.85); border: 1px solid #e0b040; }
 .sky-chip-nodata { left: 50%; bottom: 44px; transform: translateX(-50%); background: #fff; color: #111; }
 .sky-compass { position: absolute; right: 10px; bottom: 34px; pointer-events: none; }
 .sky-scale { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font: 500 11px/1 var(--mono); pointer-events: none; text-shadow: 0 0 3px #000; }
