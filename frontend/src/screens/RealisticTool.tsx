@@ -1,3 +1,4 @@
+import { Collapsible, CollapseAll } from '../components/Collapsible';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CompareMode, Pt, SkyPatch } from '../data/types';
 import { GROUPINGS, type GroupId } from '../data/catalog';
@@ -479,16 +480,14 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
 
       {/* ---------- right: findings ---------- */}
       <aside className="panel find-panel" aria-label={t('r.findings')}>
-        <section className="block" aria-label={R.sourceTitle}>
-          <h2 className="t-label">{R.sourceTitle}</h2>
+        <CollapseAll openLabel={t('cs.openAll')} closeLabel={t('cs.closeAll')} />
+        <Collapsible id="source" title={R.sourceTitle}>
           <SourceSection patch={patch} epoch={epoch} measurement={measurement} positions={positions} table={table} mark={mark} onClear={() => { setMark(null); setCandSaved(false); }} />
-        </section>
-        <section className="block" aria-label={R.photTitle}>
-          <h2 className="t-label">{R.photTitle}</h2>
+        </Collapsible>
+        <Collapsible id="photometry" title={R.photTitle}>
           <PhotometrySection patch={patch} table={table} series={series} epoch={epoch} />
-        </section>
-        <section className="block" aria-label={R.spectrumTitle}>
-          <h2 className="t-label">{R.spectrumTitle}</h2>
+        </Collapsible>
+        <Collapsible id="spectrum" title={R.spectrumTitle}>
           <SpectrumSection
             spectrum={spectrum}
             hasMark={!!mark && patch.source === 'irsa'}
@@ -501,18 +500,15 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
             sources={verdictSources}
             catalogueReady={catalogue.status === 'ok' && catalogue.wise.status !== 'loading'}
           />
-        </section>
-        <section className="block" aria-label={R.catTitle}>
-          <h2 className="t-label">{R.catTitle}</h2>
+        </Collapsible>
+        <Collapsible id="catalogue" title={R.catTitle}>
           <CatalogueSection patch={patch} epoch={epoch} catalogue={catalogue} rows={tableRows} verdict={verdict} measurement={measurement} onPick={pickSource} showWise={showWise} />
           {catalogueMarks.inView.length > MAX_MARKS && <p className="t-caption c-3">{R.showingBrightest(MAX_MARKS, catalogueMarks.inView.length)}</p>}
-        </section>
-        <section className="block" aria-label={R.changesTitle}>
-          <h2 className="t-label">{R.changesTitle}</h2>
+        </Collapsible>
+        <Collapsible id="changes" title={R.changesTitle}>
           <ChangesSection patch={patch} result={changes} onPick={pickChange} />
-        </section>
-        <section className="block" aria-label={R.candTitle}>
-          <h2 className="t-label">{R.candTitle}</h2>
+        </Collapsible>
+        <Collapsible id="candidates" title={R.candTitle}>
           <CandidatesSection
             candidates={candidates}
             canSave={!!measurement && measurement.status === 'ok'}
@@ -520,12 +516,11 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
             onSave={saveCandidate}
             onRemove={onRemoveCandidate}
           />
-        </section>
-        <section className="block" aria-label={R.dataTitle}>
-          <h2 className="t-label">{R.dataTitle}</h2>
+        </Collapsible>
+        <Collapsible id="data" title={R.dataTitle}>
           {patch.source === 'mock' && <p className="note warn">{R.demoNotice}</p>}
           <DataSection patch={patch} epoch={epoch} band={band} fieldFlag={shares?.flagged ?? null} fieldNoData={shares?.nodata ?? null} group={initial.group} />
-        </section>
+        </Collapsible>
       </aside>
     </main>
   );
