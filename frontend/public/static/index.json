@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-15T09:34:24.261Z",
+ "generated_at": "2026-11-15T09:45:47.770Z",
  "api_base_note": "Exported from http://localhost:8000 (GET /api/patch and /api/gaia); payloads are verbatim API answers. Re-run: npm run export-static -- --api <url>",
  "targets": [
   {
@@ -87,7 +87,8 @@
    }
   },
   {
-   "file": "patch/barnard.realistic.coarse.json",
+   "file": "patch/barnard.realistic.normal.json",
+   "alias": true,
    "target": "barnard",
    "kind": "realistic",
    "group": "coarse",
@@ -184,7 +185,8 @@
    }
   },
   {
-   "file": "patch/epsindb.realistic.coarse.json",
+   "file": "patch/epsindb.realistic.normal.json",
+   "alias": true,
    "target": "epsindb",
    "kind": "realistic",
    "group": "coarse",
@@ -281,7 +283,8 @@
    }
   },
   {
-   "file": "patch/wise0855.realistic.coarse.json",
+   "file": "patch/wise0855.realistic.normal.json",
+   "alias": true,
    "target": "wise0855",
    "kind": "realistic",
    "group": "coarse",
@@ -378,7 +381,8 @@
    }
   },
   {
-   "file": "patch/rwaur.realistic.coarse.json",
+   "file": "patch/rwaur.realistic.normal.json",
+   "alias": true,
    "target": "rwaur",
    "kind": "realistic",
    "group": "coarse",

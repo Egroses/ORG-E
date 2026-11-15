@@ -66,6 +66,14 @@ describe('static match', () => {
     // Explore in Game view sends no grouping: it gets the Game copy.
     expect(sp.matchStaticEntry({ ra: game.ra, dec: game.dec, fovDeg: 0.1 }, idx)?.file).toBe('patch/barnard.game.json');
   });
+  it('an alias entry (Coarse sharing the Normal file) resolves to the shared file and keeps its own grouping', async () => {
+    net({ live: 'down' });
+    const sp = await import('./staticProvider');
+    const idx = { ...INDEX, files: [...INDEX.files, entry('patch/barnard.realistic.normal.json', 'realistic', { dets: [1, 2, 3, 4, 5, 6], gap_days: 60, max_span_days: 150, group: 'coarse', alias: true })] };
+    const m = sp.matchStaticEntry({ ...realistic, gapDays: 60, maxSpanDays: 150 }, idx as never);
+    expect(m?.file).toBe('patch/barnard.realistic.normal.json');
+    expect(m?.gap_days).toBe(60);
+  });
   it('returns a SkyPatch flagged as a saved copy', async () => {
     net({ live: 'down' });
     const sp = await import('./staticProvider');

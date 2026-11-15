@@ -1,7 +1,8 @@
 // Exports saved copies of the API answers for the five practice targets, so the app can still open them
 // when the live service is down.   Usage: node scripts/export-static.mjs --api http://localhost:8000 [--only barnard,rdra] [--groups normal]
 // Node 18+, no dependencies. Payloads are written exactly as the API returns them (no pre-gzip; hosts gzip).
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -44,7 +45,12 @@ async function getPatch(q) {
   }
 }
 
+// A full export starts clean, so no stale or redundant files stay behind.
+if (!only?.length) await rm(join(out, 'patch'), { recursive: true, force: true });
 await mkdir(join(out, 'patch'), { recursive: true });
+// Identical answers (they differ only in the job id) are stored once; the other grouping keys point at the same file.
+const stored = new Map(); // content hash -> file name
+const contentHash = (text) => createHash('sha256').update(text.replace(/"id":"[0-9a-f]+"/, '"id":""')).digest('hex');
 const files = [];
 const errors = [];
 const targets = Object.keys(TARGETS).filter((id) => !only?.length || only.includes(id));
@@ -58,9 +64,11 @@ for (const id of targets) {
     try {
       const text = await getPatch({ ...c, ...j });
       const body = JSON.parse(text);
-      await writeFile(join(out, 'patch', `${j.name}.json`), text);
-      files.push({ file: `patch/${j.name}.json`, target: id, kind: j.kind, group: j.group ?? null, dets: j.dets, gap_days: j.gap, max_span_days: j.span, fov: FOV, ra: c.ra, dec: c.dec, bytes: Buffer.byteLength(text), epochs: body.epochs?.length, data_release: body.data_release ?? null });
-      console.log(`ok   ${j.name}  ${(Buffer.byteLength(text) / 1e6).toFixed(2)} MB  ${body.epochs?.length} epochs`);
+      const h = `${id}:${contentHash(text)}`;
+      const alias = stored.get(h);
+      if (!alias) { await writeFile(join(out, 'patch', `${j.name}.json`), text); stored.set(h, `patch/${j.name}.json`); }
+      files.push({ file: alias ?? `patch/${j.name}.json`, ...(alias ? { alias: true } : {}), target: id, kind: j.kind, group: j.group ?? null, dets: j.dets, gap_days: j.gap, max_span_days: j.span, fov: FOV, ra: c.ra, dec: c.dec, bytes: Buffer.byteLength(text), epochs: body.epochs?.length, data_release: body.data_release ?? null });
+      console.log(`ok   ${j.name}${alias ? ` (same as ${alias})` : ''}  ${(Buffer.byteLength(text) / 1e6).toFixed(2)} MB  ${body.epochs?.length} epochs`);
     } catch (e) { errors.push(`${j.name}: ${e.message}`); console.error(`FAIL ${j.name}: ${e.message}`); }
   }
   try {
@@ -81,5 +89,5 @@ const index = {
   files,
 };
 await writeFile(join(out, 'index.json'), JSON.stringify(index, null, 1));
-console.log(`index.json: ${files.length} files, ${(files.reduce((s, f) => s + f.bytes, 0) / 1e6).toFixed(1)} MB`);
+console.log(`index.json: ${files.length} entries, ${(files.filter((f) => !f.alias).reduce((s, f) => s + f.bytes, 0) / 1e6).toFixed(1)} MB on disk (aliases stored once)`);
 if (errors.length) { console.error('Errors:\n' + errors.join('\n')); process.exit(1); }
