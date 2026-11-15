@@ -40,9 +40,7 @@ for a position that is not cached the backend downloads **every requested detect
 other, and then builds the patch. Each detector takes about 2 to 5 minutes. Measured live run (15 Nov, backend owner):
 RA 10, Dec 10, `dets=2,4,6` = 167 files in **15.5 minutes**, 0 failed. Other positions and `dets=1,...,6` were not timed
 by us (6 detectors would be roughly twice as long: an extrapolation, not a measurement). Live queries are on by default
-(`LIVE_QUERIES=1` in `backend/app/config.py`; `backend/render.yaml` still sets `"0"` for the hosted service, so a
-hosted copy answers `archive_unavailable` for uncached positions unless that value is changed. Whether the hosted service is
-deployed was not verified). With live queries off, an uncached position answers `200` with `"status": "failed"` and
+(`LIVE_QUERIES=1` in `backend/app/config.py` and in `backend/render.yaml`: the team decided on 15 Nov to run with live queries on, also on the hosted service; whether the hosted service is deployed was not verified). With live queries off, an uncached position answers `200` with `"status": "failed"` and
 `"error": {"code": "archive_unavailable", ...}` at once.
 
 While the download runs, the `202` answer carries extra progress fields (details and a real example in

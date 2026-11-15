@@ -19,8 +19,8 @@ services:
         value: /opt/render/project/src/cache/_backend
       - key: PREBUILD_ON_START
         value: "1"
-      - key: LIVE_QUERIES          # "0" = only cached targets, never the archive (demo decision)
-        value: "0"
+      - key: LIVE_QUERIES          # "1" = positions not in the cache are downloaded from the archive (slow, team decision 15 Nov); "0" = only cached targets
+        value: "1"
     disk:
       name: cache
       mountPath: /opt/render/project/src/cache   # pipeline cache (cutouts) + backend frames

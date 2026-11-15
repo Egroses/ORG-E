@@ -27,9 +27,7 @@ ayrı bir uçtan sunulacak. Mevcut uçlar (`/api/jobs`, `/api/frames`, `/api/dif
 - [x] **Canlı sorgu politikası: karar verildi, öneriden farklı.** 15 Kasım'da canlı sorgu **açık** (`LIVE_QUERIES` varsayılanı `1`)
       ve **tek dedektör sınırı kaldırıldı** (commit `48d4e82`): önbellekte olmayan konumda istenen tüm dedektörler sırayla
       indirilir. Ölçülen canlı çalışma: RA 10, Dec 10, `dets=2,4,6` = 167 dosya, 15,5 dk (`backend/docs/spectrum-api.md`, bölüm 6).
-      Eski tahminler (tek dedektör 4–5 dk, `dets=2,4,6` 13 dk, `1..6` 25 dk) ölçülmüş değildi; ölçüm bunları aştı. Not: `backend/render.yaml`
-      hâlâ `LIVE_QUERIES="0"` diyor; barındırılan servis için bu değer proje sahibinin kararı (barındırılan servisin kurulu
-      olduğu doğrulanmadı).
+      Eski tahminler (tek dedektör 4–5 dk, `dets=2,4,6` 13 dk, `1..6` 25 dk) ölçülmüş değildi; ölçüm bunları aştı. Proje sahibinin kararı (15 Kasım): yayında da `LIVE_QUERIES=1`; `backend/render.yaml` buna göre `"1"` yapıldı (barındırılan servisin kurulu olduğu doğrulanmadı).
 - [x] (`backend/app/patch.py`: `SNAP_ARCSEC = 10.0`; testi `test_snaps_to_a_target_within_10_arcsec`) **Hedefe yakalama (snap).** İstek, önbellekteki beş hedeften birine 10 yay saniyesi içindeyse o hedefin önbelleğiyle
       sunulmalı. `pipeline.cutouts._directory` yalnızca 0,002 yay saniyesi içini tanıyor; 1 yay saniyelik fark önbelleği kaçırır.
       (Arayüz artık `targets.json`'daki tam sayıları gönderiyor, ama yakalama yine de gerekli.)
@@ -71,8 +69,7 @@ ayrı bir uçtan sunulacak. Mevcut uçlar (`/api/jobs`, `/api/frames`, `/api/dif
       Zip içindeki yollar `cache/<hedef>/D<n>/...` ile başlar; depo köküne açılır.
 - [ ] **Yapılmadı:** `backend/scripts/render_build.sh` ve `render.yaml` önbelleği indirip açmıyor; depoda açma komutu yok. Bildiğim kadarıyla Render diski yalnızca çalışma anında erişilebilir (derleme sırasında değil): açma işini başlatma
       komutunda (`cache/barnard` yoksa indir ve aç) ya da SSH ile yap. Doğrula.
-- [ ] (karar proje sahibinde; `render.yaml` hâlâ `LIVE_QUERIES="0"`, yerelde canlı sorgu açık kullanıldı; sunucuda doğrulanmadı) Disk 1 GB: ham veri 507 MB + üretilmiş kareler. Canlı sorgular (`cache/custom/`) alanı doldurabilir; **demo için
-      `LIVE_QUERIES=0`** öneriyorum (karar proje sahibinde).
+- [ ] (karar verildi: `LIVE_QUERIES=1`; sunucuda doğrulanmadı) Disk 1 GB: ham veri 507 MB + üretilmiş kareler. Canlı sorgular (`cache/custom/`) alanı doldurur; **canlı sorgu açıkken disk en az 2 GB olmalı** ve eski `custom` klasörleri temizlenmeli (kendiliğinden temizlenmiyor, doğrulanmadı).
 - [x] (`backend/app/main.py`: `cached_units`, `*/D[1-6]/manifest.csv` sayısı; yerelde 30) `/api/health`: önbellekte kaç birim olduğunu da döndür (30 olmalı). Sunucuda önbellek eksikse hemen anlaşılır.
 - [ ] **Sunucuda doğrulanmadı.** Yerelde (`main`) yapıldı ve 200 döndü (`devam.md`). Açtıktan sonra duman testi: Barnard's Star için `GET /api/patch?ra=269.446271&dec=4.768197&dets=2,4,6` 200 dönmeli.
 
