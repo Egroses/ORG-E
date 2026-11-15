@@ -90,8 +90,28 @@ export interface PatchRequest {
 
 export type LoadStep = 'finding' | 'downloading' | 'stacking' | 'done';
 
+/** What the backend reports while it downloads a position that is not in the saved set. */
+export interface LiveProgress {
+  /** Images the backend has to read, done so far, and failed so far. `total` is 0 while it is still being counted. */
+  total: number;
+  done: number;
+  failed: number;
+  /** Optional: which detector the backend is working on (absent until the backend reports it). */
+  detectorDone?: number;
+  detectorTotal?: number;
+  /** Date.now() when this load started, for the elapsed time. */
+  startedAt: number;
+}
+
+export interface LoadOptions {
+  /** Called on every 202 answer: only a position that is not saved takes this path. */
+  onProgress?: (p: LiveProgress) => void;
+  /** Stops polling when the visitor leaves the screen. */
+  signal?: AbortSignal;
+}
+
 export interface SkyDataProvider {
-  getPatch(req: PatchRequest, onStep?: (step: LoadStep) => void): Promise<SkyPatch>;
+  getPatch(req: PatchRequest, onStep?: (step: LoadStep) => void, opts?: LoadOptions): Promise<SkyPatch>;
 }
 
 export type TargetId = 'barnard' | 'wise0855' | 'epsindb' | 'rwaur' | 'rdra';

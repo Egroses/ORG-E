@@ -4,5 +4,6 @@ import { en as app } from './parts/app';
 import { en as data } from './parts/data';
 import { en as realistic } from './parts/realistic';
 import { en as frontB } from './parts/front-b';
+import { en as frontA } from './parts/front-a';
 
-export const en = { ...app, ...data, ...realistic, ...frontB } as const;
+export const en = { ...app, ...data, ...realistic, ...frontB, ...frontA } as const;

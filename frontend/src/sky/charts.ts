@@ -146,3 +146,11 @@ export function spectrumChartLayout(points: SpectrumPoint[], box: Box = DEFAULT_
     box, xDomain, (v) => num(v, 1), [1, 2, 3, 4, 5],
   );
 }
+
+/** A label that would cross the edge of the chart is anchored to that edge instead of being centred on its tick. */
+export function tickAnchor(x: number, label: string, width: number): 'start' | 'middle' | 'end' {
+  const half = label.length * 3.3 + 2; // about 6.6 px per character at 10 px mono
+  if (x - half < 0) return 'start';
+  if (x + half > width) return 'end';
+  return 'middle';
+}

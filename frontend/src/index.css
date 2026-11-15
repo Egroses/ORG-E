@@ -291,6 +291,7 @@ hr.div { height: 1px; margin: 0; border: 0; background: var(--border); align-sel
 .sky-loading { min-height: 120px; }
 .sky-zoom { position: absolute; inset: 0; }
 .sky-canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.sky-canvas.smooth { image-rendering: auto; }
 .sky-grid { position: absolute; inset: 0; background-image: linear-gradient(to right, rgba(255,255,255,.18) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,.18) 1px, transparent 1px); pointer-events: none; }
 .sky-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .sky-ring { position: absolute; aspect-ratio: 1; border: 2px solid; border-radius: 50%; pointer-events: none; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
@@ -315,7 +316,8 @@ hr.div { height: 1px; margin: 0; border: 0; background: var(--border); align-sel
 .sky-compass { position: absolute; right: 10px; bottom: 34px; pointer-events: none; }
 .sky-scale { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font: 500 11px/1 var(--mono); pointer-events: none; text-shadow: 0 0 3px #000; }
 .sky-scale-bar { display: block; height: 4px; border: 1.5px solid #fff; border-top: 0; }
-.sky-readout { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 10px; padding: 3px 9px; border-radius: 6px; background: rgba(0,0,0,.7); font: 400 11px/1.4 var(--mono); pointer-events: none; white-space: nowrap; max-width: calc(100% - 100px); overflow: hidden; }
+.sky-readout { position: absolute; left: 10px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 0 10px; padding: 3px 9px; border-radius: 6px; background: rgba(0,0,0,.7); font: 400 11px/1.4 var(--mono); pointer-events: none; white-space: nowrap; max-width: calc(100% - 100px); overflow: hidden; }
+.sky-readout span:last-child { white-space: normal; }
 .sky-readout .muted { color: #b5b5b5; overflow: hidden; text-overflow: ellipsis; }
 
 .bar { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }

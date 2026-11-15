@@ -1,5 +1,6 @@
 import type { Chip, Outcome, Pt, TargetId } from '../data/types';
 import { verdictText, type SourceRef, type VerdictKind } from '../sky/catalogue';
+import { legacyVerdictText } from './legacyVerdict';
 
 export interface Observation {
   ra: number;
@@ -102,7 +103,7 @@ const csvCell = (v: string | number | null) => {
 
 /** The catalogue verdict of a saved candidate, worded in the language on screen. */
 export function candidateVerdict(c: Candidate): string {
-  if (!c.verdictKind) return c.verdict;
+  if (!c.verdictKind) return legacyVerdictText(c.verdict);
   return verdictText({ kind: c.verdictKind, source: c.verdictSource ?? null, catRate: c.verdictRate ?? null, moves: c.verdictMoves ?? null });
 }
 

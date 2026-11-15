@@ -1,0 +1,3 @@
+.use-visits { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; flex: none; }
+.use-visit { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/1.4 var(--sans); color: var(--text-2); cursor: pointer; }
+.use-visit input { accent-color: var(--accent); }

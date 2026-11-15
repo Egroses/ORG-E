@@ -19,7 +19,7 @@ Deep link straight into explore mode: `/#/explore?ra=133.79&dec=-7.24&fov=0.1` (
 
 Runs on **realistic demo data** (`src/data/mockProvider.ts`): real 6.15″ pixel scale, real epoch dates,
 real proper motions, sub-pixel PSF placement, per-epoch noise, one cosmic-ray glitch and a few flagged pixels.
-Motion is never exaggerated. The UI shows a "Demo data" chip while the mock is active.
+Motion is never exaggerated. A full-width "DEMO DATA" banner shows while the mock is active (developer switch `?data=mock` only).
 
 ## Plugging in real SPHEREx data
 
@@ -197,9 +197,66 @@ They are verbatim `/api/patch` and `/api/gaia` answers (hosts gzip them; they ar
 (Node 18+, no dependencies; polls 202 every 2 s, 10 min timeout per file; fov 0.1, the exact `pipeline/targets.json` positions,
 Game = detectors 2,4,6 with 30/60 days (R Draconis 60/150), Realistic = detectors 1-6 with the grouping presets.)
 `src/data/staticProvider.ts` matches a request by position (within 10 arcsec), field, detector set and grouping.
-Order: live answer, else saved copy (Game, Realistic and Explore), else (Game only) demo data; Realistic never shows demo data.
-`?data=mock` still forces demo data. A patch from a saved copy carries `savedCopy` and the screens show
-"Showing a saved copy from <date> (live service unavailable)" next to where the "Demo data" chip would be. Gaia: `/api/gaia`, else `<target>.gaia.json`, else the built-in five.
-Size: 23 MB for 20 files. The Realistic "Fine" grouping (10/30 days) was left out to stay under 25 MB (it would add 13 MB), so with the service
+Order: live answer, else saved copy, else an honest error. Demo data is never shown automatically; only the developer switch
+`?data=mock` forces it (with a full-width "DEMO DATA" banner). A patch from a saved copy carries `savedCopy` and the screens show
+"Showing a saved copy from <date> (live service unavailable)". Gaia: `/api/gaia`, else `<target>.gaia.json`, else the built-in five.
+Size: about 16 MB (identical payloads are stored once; `index.json` aliases point to them). The Realistic "Fine" grouping (10/30 days) was left out to stay under 25 MB (it would bring the total to about 27 MB), so with the service
 down, Fine shows an error; Normal and Coarse work. Only fov 0.1 is saved. Explore in Game view (no grouping in the request) gets the Game copy.
 Re-run the export after the data changes.
+
+## Embedding the picture in another page (iframe)
+
+`embed=1` in the hash parameters shows only the sky picture, the visit and band buttons and a play button (no header, no side panels, no notebook, no glossary).
+It always uses the Realistic data (all six detectors). The page fills whatever size the iframe has: the picture is the largest square that fits above the
+controls, and the controls wrap. Everything is read from the address:
+
+| Parameter | Meaning |
+| --- | --- |
+| `ra`, `dec`, `fov` | field centre (degrees) and side (degrees, 0.05 to 0.25) |
+| `band` | `D1` to `D6` |
+| `visit` | visit number, counted from 1 |
+| `mode` | `blink`, `diff` or `stack` (`ref` = visit that `diff` subtracts, from 1) |
+| `speed` | blink speed in frames per second: `0.5`, `1` or `2` |
+| `invert` | `1` for a light background with a dark picture |
+| `stretch`, `lo`, `hi`, `layer`, `group` | as in Realistic mode |
+
+The Share menu has "Copy link" and "Copy embed code". The embed code is this tag (the `&` of the address is written `&amp;`, as HTML wants):
+
+```html
+<iframe src="https://YOUR-HOST/#/explore?ra=269.44627&amp;dec=4.76820&amp;fov=0.1&amp;view=realistic&amp;band=D6&amp;visit=1&amp;embed=1"
+  width="480" height="540" style="border:0" loading="lazy" title="Sky Quest"></iframe>
+```
+
+Add `?lang=tr` or `?lang=en` before the `#` to force the language of the frame. A position that is not in the saved set is downloaded live (15 minutes or more);
+the frame then shows the download progress instead of a picture.
+
+## Live downloads, name lookup, field size (front-a notes)
+
+- **Positions that are not in the saved set** are downloaded by the data service from the SPHEREx archive (about 15 minutes for detectors 2, 4 and 6).
+  `realProvider.ts` keeps polling every 2 s and gives up after 25 minutes for such a position (3 minutes for a saved target). Polling stops when the visitor
+  leaves the screen (`AbortController`). The loading screen shows a real progress bar from the `progress` object of the 202 answers, the time so far, and
+  "detector N of M" if the service ever sends the optional `detector_done` / `detector_total` fields (top level or inside `progress`). A failed download is
+  an error in Realistic and Explore, never replaced by demo data.
+- **Search**: the search boxes first understand built-in names and coordinates without the network. Any other text goes to `GET /api/resolve?q=` and the
+  `current` position (already moved to 2026.0) becomes the field centre; a result within 10 arcseconds of a saved target uses that target's exact numbers so the
+  saved copy is found. Messages for 400, 404 and an unreachable service are in `i18n/parts/front-a.ts`.
+- **Field size**: the 3, 6 and 15 arcminute buttons stay; a number box takes 3 to 15 arcminutes (clamped, with a message) and sends degrees (`lib/fov.ts`).
+  `fov` in the address accepts any value from 0.05 to 0.25. For a saved target a field wider than 6 arcminutes shows a note that the saved data covers about 6 arcminutes.
+- **Open in Aladin Lite** sits next to Share (new tab, `noopener noreferrer`). Extra Realistic parameters in the address: `speed`, `invert`, `grid=1`, `smooth=1`,
+  `use=1,3` (visits that take part in the blink) and `ref=prev` (Difference subtracts the previous visit).
+- **Keyboard on the picture**: Tab to the picture, then `+` / `-` zoom, `0` resets, the arrow keys move a zoomed picture (at 1x they step through the visits),
+  Space plays, Enter marks the centre. The mouse wheel is taken only by pictures that can be zoomed (the small ones on the landing page and the board let the page scroll).
+
+### What was checked (by hand, in a real browser, and by tests)
+
+Checked in Chromium at 1440 px and 390 px width, Turkish and English, light and dark theme: the live-download screen (with a mocked slow answer), the failed-download
+screen, name lookup (found, not found), Share menu (copy link, copy embed code), the embedded page at 480x540, 300x700 and 900x360 and inside a real iframe,
+the custom field size (10, 40 and non-numeric input), blink with a subset of visits, difference against the previous visit, keyboard zoom and pan, wheel, drag and
+the zoom buttons on a game case, the phone tabs of Realistic mode (no horizontal scrolling at 390 px), chart tick and read-out clipping, old English candidate verdicts shown in Turkish.
+Contrast of the new buttons was measured in the dark theme (text against its background: 11.5 to 17 : 1); the light theme uses the same design tokens and was looked at, not measured.
+`npm run lint`, `npx vitest run` and `npm run build` pass. This is a list of what was looked at, not a claim of WCAG conformance. Not checked: real screen readers, Safari and Firefox,
+touch pinch-zoom (touch uses the zoom buttons and one-finger drag when zoomed), a live download that really takes 15 minutes.
+
+Aladin Lite: the page opened with `target=` and `fov=` (it loads the right sky tiles and field), but it ignored `survey=` (every survey id tried, including `CDS/P/allWISE/color`,
+`CDS/P/AllWISE/color`, `P/allWISE/color` and the HiPS address) and always opened on DSS2 colour; the visitor can pick AllWISE in its own survey menu.
+

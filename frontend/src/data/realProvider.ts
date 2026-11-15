@@ -1,4 +1,4 @@
-import type { Band, BandId, Epoch, LoadStep, PatchRequest, SkyDataProvider, SkyPatch } from './types';
+import type { Band, BandId, Epoch, LiveProgress, LoadStep, PatchRequest, SkyDataProvider, SkyPatch } from './types';
 import { ALL_BANDS } from './catalog';
 import { decodeFloat32, decodeUint8 } from './decode';
 import { makeEpochs } from './epochs';
@@ -22,7 +22,10 @@ export interface PatchPayload {
   }[];
   bands?: { detector: number; wavelength_um: [number, number] }[];
   frames?: (PayloadFrame | null)[][];
-  progress?: { total: number; done: number; failed: number };
+  progress?: { total: number; done: number; failed: number; detector_done?: number; detector_total?: number };
+  /** Optional, may appear at the top level once the backend reports them. */
+  detector_done?: number;
+  detector_total?: number;
   error?: { code: string; message: string };
   warnings?: string[];
   data_release?: { collections?: Record<string, number>; latest_mjd?: number | null };
@@ -149,15 +152,43 @@ export function convertPatch(p: PatchPayload): SkyPatch {
   };
 }
 
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** Wait that ends at once (with an AbortError) when the signal fires. */
+const wait = (ms: number, signal?: AbortSignal) => new Promise<void>((resolve, reject) => {
+  if (signal?.aborted) return reject(new DOMException('Aborted', 'AbortError'));
+  const id = setTimeout(() => { signal?.removeEventListener('abort', onAbort); resolve(); }, ms);
+  const onAbort = () => { clearTimeout(id); reject(new DOMException('Aborted', 'AbortError')); };
+  signal?.addEventListener('abort', onAbort, { once: true });
+});
+
+export const isAbort = (e: unknown) => e instanceof DOMException && e.name === 'AbortError';
+
+/** Plain numbers from a 202 answer. Missing or odd values become 0 / undefined, never NaN. */
+export function liveProgressOf(p: PatchPayload, startedAt: number): LiveProgress {
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined);
+  const pr = p.progress;
+  const dd = n(pr?.detector_done ?? p.detector_done);
+  const dt = n(pr?.detector_total ?? p.detector_total);
+  return {
+    total: n(pr?.total) ?? 0,
+    done: n(pr?.done) ?? 0,
+    failed: n(pr?.failed) ?? 0,
+    ...(dd !== undefined && dt !== undefined && dt > 0 ? { detectorDone: dd, detectorTotal: dt } : {}),
+    startedAt,
+  };
+}
 
 export interface RealProviderOptions {
   base?: string;
   fetchImpl?: typeof fetch;
   pollMs?: number;
-  /** Give up after this long (ms). */
+  /** Give up after this long (ms) for a saved position (the answer should be instant). */
   timeoutMs?: number;
+  /** Give up after this long (ms) for a position that is downloaded live. */
+  liveTimeoutMs?: number;
 }
+
+/** A live download takes about 15 minutes for detectors 2, 4 and 6; 25 minutes leaves room for all six. */
+export const LIVE_TIMEOUT_MS = 25 * 60_000;
 
 export const API_BASE: string = (import.meta.env?.VITE_API_BASE as string | undefined) ?? '';
 
@@ -173,8 +204,10 @@ export function createRealProvider(opts: RealProviderOptions = {}): SkyDataProvi
   const doFetch: typeof fetch = opts.fetchImpl ?? ((...a) => fetch(...a));
   const pollMs = opts.pollMs ?? 2000;
   const timeoutMs = opts.timeoutMs ?? 180_000;
+  const liveTimeoutMs = opts.liveTimeoutMs ?? LIVE_TIMEOUT_MS;
   return {
-    async getPatch(req: PatchRequest, onStep) {
+    async getPatch(req: PatchRequest, onStep, lo) {
+      const signal = lo?.signal;
       const epochParams =
         (req.gapDays != null ? `&gap_days=${req.gapDays}` : '') +
         (req.maxSpanDays != null ? `&max_span_days=${req.maxSpanDays}` : '');
@@ -184,8 +217,9 @@ export function createRealProvider(opts: RealProviderOptions = {}): SkyDataProvi
       for (;;) {
         let res: Response;
         try {
-          res = await doFetch(url);
-        } catch {
+          res = await doFetch(url, signal ? { signal } : undefined);
+        } catch (e) {
+          if (isAbort(e) || signal?.aborted) throw new DOMException('Aborted', 'AbortError');
           throw new DataError('unreachable');
         }
         if (res.status === 202 || res.status === 200) {
@@ -200,6 +234,7 @@ export function createRealProvider(opts: RealProviderOptions = {}): SkyDataProvi
             return patch;
           }
           onStep?.(stepFor(body));
+          lo?.onProgress?.(liveProgressOf(body, started));
         } else {
           let err: { code?: string; message?: string } | undefined;
           try {
@@ -209,10 +244,10 @@ export function createRealProvider(opts: RealProviderOptions = {}): SkyDataProvi
           }
           throw new DataError('server', { code: err?.code, serverMessage: err?.message });
         }
-        if (Date.now() - started > timeoutMs) {
+        if (Date.now() - started > (req.cached ? timeoutMs : liveTimeoutMs)) {
           throw new DataError('timeout');
         }
-        await wait(pollMs);
+        await wait(pollMs, signal);
       }
     },
   };

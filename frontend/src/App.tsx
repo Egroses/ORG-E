@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Chip, LoadStep, PatchRequest, Pt, SkyPatch, TargetId } from './data/types';
-import { CASES, FOV_OPTIONS, KNOWN } from './data/catalog';
+import type { Chip, LiveProgress, LoadStep, PatchRequest, Pt, SkyPatch, TargetId } from './data/types';
+import { CASES, KNOWN } from './data/catalog';
+import { exceedsSaved, parseFovDeg } from './lib/fov';
 import { caseRequest, loadPatch, patchKey, realisticRequest } from './data/provider';
 import { answerKey, evaluate } from './sky/analysis';
 import { lookupName, parseCoords } from './sky/astro';
+import { resolveName, ResolveError, type Resolved } from './sky/resolve';
+import type { SearchResult } from './lib/useSearchSubmit';
 import {
   clearReveal, loadProgress, loadReveal, saveProgress, storeReveal, type Candidate, type Observation, type Progress, type RevealState,
 } from './state/progress';
@@ -15,14 +18,17 @@ import { CaseBoard } from './screens/CaseBoard';
 import { Playfield } from './screens/Playfield';
 import { RealisticTool } from './screens/RealisticTool';
 import {
-  DEFAULT_REALISTIC, loadViewMode, parseRealistic, parseViewMode, realisticPairs, saveViewMode, type RealisticState, type ViewMode,
+  DEFAULT_REALISTIC, loadViewMode, parseEmbed, parseRealistic, parseViewMode, realisticPairs, saveViewMode, type RealisticState, type ViewMode,
 } from './state/viewState';
 import { R } from './ui/realisticText';
 import { errorText } from './data/errors';
+import { num } from './i18n';
+import { isAbort } from './data/realProvider';
 import { useI18n } from './i18n/react';
 import { Reveal } from './screens/Reveal';
 import { FieldReport } from './screens/FieldReport';
 import { ExploreGate } from './screens/ExploreGate';
+import { EmbedStatus, EmbedView } from './screens/EmbedView';
 import { Glossary } from './components/Glossary';
 import { Tour } from './components/Tour';
 import { tourSeen } from './state/tour';
@@ -38,14 +44,19 @@ type Route =
   | { name: 'case'; id: TargetId }
   | { name: 'reveal'; id: TargetId }
   | { name: 'report' }
-  | { name: 'explore'; req: PatchRequest | null; view: ViewMode; rs: RealisticState };
+  | { name: 'explore'; req: PatchRequest | null; view: ViewMode; rs: RealisticState; embed?: boolean };
 
 interface LoadState {
   step: LoadStep | null;
+  /** Progress of a live download (only a position that is not saved has one). */
+  live?: LiveProgress | null;
   patch: SkyPatch | null;
   /** What went wrong, kept as data: the text is made in the current language when it is shown. */
   error: { err: unknown; strict: boolean } | null;
 }
+
+/** The name lookup in flight, so a newer search can stop an older one. */
+let lookupCtl: AbortController | null = null;
 
 const isTarget = (s: string | undefined): s is TargetId => !!s && CASES.some((c) => c.id === s);
 
@@ -58,9 +69,9 @@ function parseReq(params: URLSearchParams): PatchRequest | null {
   if (!params.has('ra') || !params.has('dec')) return null;
   const ra = Number(params.get('ra'));
   const dec = Number(params.get('dec'));
-  const fov = Number(params.get('fov') ?? 0.1);
   if (!Number.isFinite(ra) || !Number.isFinite(dec) || ra < 0 || ra >= 360 || Math.abs(dec) > 90) return null;
-  const req: PatchRequest = { ra, dec, fovDeg: FOV_OPTIONS.some((o) => o.value === fov) ? fov : 0.1 };
+  // Any field the data service accepts (3 to 15 arcminutes) is kept, not only the three buttons.
+  const req: PatchRequest = { ra, dec, fovDeg: parseFovDeg(params.get('fov')) };
   // The practice targets are already loaded, so the same spot opens instantly.
   const isCaseSpot = CASES.some((c) => {
     const r = caseRequest(c.id, req.fovDeg);
@@ -79,11 +90,13 @@ function parseRoute(hash: string, storedMode: ViewMode): Route {
   if (head === 'explore') {
     const params = new URLSearchParams(query);
     // The address wins; without `view` an old link uses the remembered mode (Game for new visitors).
-    const view = parseViewMode(params) ?? storedMode;
+    // The embedded page always shows the Realistic picture (all six bands), whatever the stored mode is.
+    const embed = parseEmbed(params);
+    const view = embed ? 'realistic' : parseViewMode(params) ?? storedMode;
     const rs = parseRealistic(params);
     const base = parseReq(params);
     const req = base && view === 'realistic' ? realisticRequest(base.ra, base.dec, base.fovDeg, rs.group) : base;
-    return { name: 'explore', req, view, rs };
+    return { name: 'explore', req, view, rs, ...(embed ? { embed } : {}) };
   }
   return { name: 'landing' };
 }
@@ -98,6 +111,7 @@ function routeHash(r: Route): string {
     case 'explore': {
       const parts = r.req ? [reqQuery(r.req)] : [];
       parts.push(...(r.view === 'realistic' ? realisticPairs(r.rs).map(([k, v]) => `${k}=${v}`) : ['view=game']));
+      if (r.embed) parts.push('embed=1');
       return `#/explore?${parts.join('&')}`;
     }
   }
@@ -122,12 +136,26 @@ function resolveQuery(text: string, fov: number, view: ViewMode, group: Realisti
     return { req: view === 'realistic' ? realisticRequest(c.ra, c.dec, fov, group) : c };
   }
   const c = parseCoords(text);
-  if (c) return { req: view === 'realistic' ? realisticRequest(c.ra, c.dec, fov, group) : { ra: c.ra, dec: c.dec, fovDeg: fov } };
+  if (c) return { req: requestAt(c, fov, view, group) };
   return { error: true };
 }
 
-const shareUrl = (req: PatchRequest, view: ViewMode = 'game', rs: RealisticState = DEFAULT_REALISTIC) =>
-  `${window.location.origin}${window.location.pathname}${routeHash({ name: 'explore', req, view, rs })}`;
+/** A request for a free position. Within 10 arcseconds of a saved target it uses that target's exact numbers, so the
+ *  backend finds the saved copy (see docs/patch-api.md). */
+function requestAt(c: { ra: number; dec: number }, fov: number, view: ViewMode, group: RealisticState['group']): PatchRequest {
+  const near = CASES.find((k) => {
+    const r = caseRequest(k.id, fov);
+    return Math.hypot((r.ra - c.ra) * Math.cos((c.dec * Math.PI) / 180), r.dec - c.dec) * 3600 < 10;
+  });
+  if (near) {
+    const r = caseRequest(near.id, fov);
+    return view === 'realistic' ? realisticRequest(r.ra, r.dec, fov, group) : r;
+  }
+  return view === 'realistic' ? realisticRequest(c.ra, c.dec, fov, group) : { ra: c.ra, dec: c.dec, fovDeg: fov };
+}
+
+const shareUrl = (req: PatchRequest, view: ViewMode = 'game', rs: RealisticState = DEFAULT_REALISTIC, embed = false) =>
+  `${window.location.origin}${window.location.pathname}${routeHash({ name: 'explore', req, view, rs, embed })}`;
 
 export default function App() {
   const { t } = useI18n();
@@ -142,6 +170,8 @@ export default function App() {
   const [reveal, setReveal] = useState<RevealState | null>(loadReveal);
   const [loads, setLoads] = useState<Record<string, LoadState>>({});
   const [queryText, setQueryText] = useState('');
+  /** The official name of a position found by name, kept while that position is on screen. */
+  const [resolved, setResolved] = useState<{ name: string; ra: number; dec: number } | null>(null);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
   const toggleTheme = () => setTheme((t) => { const n = t === 'dark' ? 'light' : 'dark'; applyTheme(n); return n; });
@@ -180,9 +210,15 @@ export default function App() {
     const k = loadKey(exploreReq);
     const empty: LoadState = { step: null, patch: null, error: null };
     const set = (s: Partial<LoadState>) => setLoads((prev) => ({ ...prev, [k]: { ...empty, ...prev[k], ...s } }));
-    loadPatch(exploreReq, (step) => set({ step, error: null }))
-      .then((patch) => set({ patch, step: 'done', error: null }))
-      .catch((e: unknown) => set({ step: null, patch: null, error: { err: e, strict: !!exploreReq.strict } }));
+    // Leaving the screen stops the polling (a live download can take 15 minutes or more).
+    const ctl = new AbortController();
+    loadPatch(exploreReq, (step) => set({ step, error: null }), { signal: ctl.signal, onProgress: (live) => set({ live }) })
+      .then((patch) => set({ patch, step: 'done', live: null, error: null }))
+      .catch((e: unknown) => {
+        if (ctl.signal.aborted || isAbort(e)) return;
+        set({ step: null, live: null, patch: null, error: { err: e, strict: !!exploreReq.strict } });
+      });
+    return () => ctl.abort();
   }, [exploreReq]);
 
   const navigate = useCallback((r: Route) => {
@@ -241,12 +277,34 @@ export default function App() {
     navigate({ name: 'reveal', id });
   }
 
-  function handleSearch(text: string, fov: number): string | null {
-    const r = resolveQuery(text, fov, exploreRoute?.view ?? 'game', exploreRoute?.rs.group ?? DEFAULT_REALISTIC.group);
-    if ('error' in r) return 'invalid';
-    setQueryText(text);
-    navigate({ name: 'explore', req: r.req, view: exploreRoute?.view ?? 'game', rs: { ...DEFAULT_REALISTIC, group: exploreRoute?.rs.group ?? DEFAULT_REALISTIC.group } });
-    return null;
+  /** Built-in names and coordinates work offline and answer at once; anything else is looked up by the service. */
+  function handleSearch(text: string, fov: number): SearchResult {
+    const view = exploreRoute?.view ?? 'game';
+    const group = exploreRoute?.rs.group ?? DEFAULT_REALISTIC.group;
+    const go = (req: PatchRequest) => {
+      navigate({ name: 'explore', req, view, rs: { ...DEFAULT_REALISTIC, group } });
+    };
+    const r = resolveQuery(text, fov, view, group);
+    if ('req' in r) {
+      setQueryText(text);
+      setResolved(null);
+      go(r.req);
+      return null;
+    }
+    // A newer lookup replaces an older one.
+    lookupCtl?.abort();
+    const ctl = new AbortController();
+    lookupCtl = ctl;
+    return resolveName(text, { signal: ctl.signal }).then(
+      (res: Resolved) => {
+        const req = requestAt(res, fov, view, group);
+        setQueryText(text);
+        setResolved({ name: res.name, ra: req.ra, dec: req.dec });
+        go(req);
+        return null;
+      },
+      (e: unknown) => (e instanceof ResolveError ? e.kind : ctl.signal.aborted ? 'aborted' : 'service'),
+    );
   }
 
   function resetProgress() {
@@ -272,6 +330,7 @@ export default function App() {
 
   const spotShare = (ra: number, dec: number, fovDeg: number) => ({
     url: shareUrl({ ra, dec, fovDeg }),
+    embedUrl: shareUrl(realisticRequest(ra, dec, fovDeg, DEFAULT_REALISTIC.group), 'realistic', DEFAULT_REALISTIC, true),
     aladin: aladinUrl(ra, dec, fovDeg),
   });
 
@@ -407,10 +466,25 @@ export default function App() {
 
   // explore
   const req = route.req;
+  if (route.embed) {
+    const embedLoad = req ? loads[loadKey(req)] : undefined;
+    if (!req) return <EmbedStatus error={t('embed.noPosition')} />;
+    if (embedLoad?.error) return <EmbedStatus error={R.loadError(errorText(embedLoad.error.err))} />;
+    if (!embedLoad?.patch) return <EmbedStatus live={embedLoad?.live ?? null} />;
+    return (
+      <EmbedView
+        key={loadKey(req)}
+        patch={embedLoad.patch}
+        initial={route.rs}
+        onState={(st) => setLive({ key: loadKey(req), s: st })}
+      />
+    );
+  }
   const realistic = route.view === 'realistic';
   const load = req ? loads[loadKey(req)] : undefined;
   const caseHere = req ? CASES.find((c) => { const r = caseRequest(c.id, req.fovDeg); return Math.abs(r.ra - req.ra) < 1e-4 && Math.abs(r.dec - req.dec) < 1e-4; }) : undefined;
   const withFov = (v: number): PatchRequest => (realistic ? realisticRequest(req!.ra, req!.dec, v, route.rs.group) : { ra: req!.ra, dec: req!.dec, fovDeg: v });
+  const shownName = req && resolved && Math.abs(resolved.ra - req.ra) < 1e-4 && Math.abs(resolved.dec - req.dec) < 1e-4 ? resolved.name : null;
   const exploreTool: ToolControls = {
     target: caseHere?.id ?? (req ? '' : CASES[0].id),
     onTarget: (id) => {
@@ -419,10 +493,11 @@ export default function App() {
     },
     targetLabel: realistic ? (c) => KNOWN[c.id].name : undefined,
     onSearch: (t) => handleSearch(t, req?.fovDeg ?? 0.1),
+    customLabel: shownName ?? undefined,
     fov: req ? { value: req.fovDeg, onChange: (v) => navigate({ name: 'explore', req: withFov(v), view: route.view, rs: realistic ? (live ?? route.rs) : route.rs }) } : undefined,
     share: req && load?.patch
       ? (realistic
-        ? { url: shareUrl(req, 'realistic', live ?? route.rs), aladin: aladinUrl(req.ra, req.dec, req.fovDeg), realistic: true }
+        ? { url: shareUrl(req, 'realistic', live ?? route.rs), embedUrl: shareUrl(req, 'realistic', live ?? route.rs, true), aladin: aladinUrl(req.ra, req.dec, req.fovDeg), realistic: true }
         : spotShare(req.ra, req.dec, req.fovDeg))
       : undefined,
   };
@@ -430,6 +505,9 @@ export default function App() {
   return (
     <div className={`app${ready ? ' app-tool' : ''}`}>
       {top('explore', exploreTool)}
+      {ready && caseHere && exceedsSaved(req!.fovDeg) && (
+        <p className="fov-hint" role="note">{t('fov.hint', { v: num(Math.round(req!.fovDeg * 600) / 10, Number.isInteger(Math.round(req!.fovDeg * 600) / 10) ? 0 : 1) })}</p>
+      )}
       {ready && realistic ? (
         <RealisticTool
           key={loadKey(req!)}
@@ -455,6 +533,8 @@ export default function App() {
           initialText={queryText}
           initialFov={req?.fovDeg ?? 0.1}
           loading={req && !load?.error ? load?.step ?? 'finding' : null}
+          live={load?.live ?? null}
+          resolvedName={shownName}
           error={load?.error ? (load.error.strict ? R.loadError(errorText(load.error.err)) : t('gate.loadError', { msg: errorText(load.error.err) })) : null}
           realistic={realistic}
           onSearch={handleSearch}

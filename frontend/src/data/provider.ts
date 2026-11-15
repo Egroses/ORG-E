@@ -1,7 +1,7 @@
-import type { PatchRequest, SkyDataProvider, SkyPatch, TargetId } from './types';
+import type { LoadOptions, PatchRequest, SkyDataProvider, SkyPatch, TargetId } from './types';
 import { mockProvider } from './mockProvider';
 import { GROUPINGS, type GroupId } from './catalog';
-import { createRealProvider } from './realProvider';
+import { createRealProvider, isAbort } from './realProvider';
 import { DataError } from './errors';
 import { getStaticPatch } from './staticProvider';
 
@@ -30,11 +30,12 @@ export const isMockForced = forcedMock;
 export const getDataMode = (): DataMode => (forcedMock() ? 'mock' : 'real');
 
 export const provider: SkyDataProvider = {
-  async getPatch(req, onStep) {
+  async getPatch(req, onStep, opts) {
     if (forcedMock()) return mockProvider.getPatch(req, onStep);
     try {
-      return await real.getPatch(req, onStep);
+      return await real.getPatch(req, onStep, opts);
     } catch (e) {
+      if (isAbort(e)) throw e;
       // Live answer failed (network, 5xx, "failed"): the saved real copy of the target, if there is one.
       const saved = await getStaticPatch(req);
       if (saved) { onStep?.('done'); return saved; }
@@ -51,13 +52,18 @@ export const patchKey = (r: PatchRequest) =>
   `${r.ra.toFixed(6)},${r.dec.toFixed(6)},${r.fovDeg},${r.gapDays ?? ''},${r.maxSpanDays ?? ''},${(r.dets ?? [2, 4, 6]).join('')},${r.strict ? 's' : ''}`;
 const keyOf = patchKey;
 
-export function loadPatch(req: PatchRequest, onStep?: Parameters<SkyDataProvider['getPatch']>[1]) {
+const live = new Map<string, AbortSignal | undefined>();
+
+export function loadPatch(req: PatchRequest, onStep?: Parameters<SkyDataProvider['getPatch']>[1], opts?: LoadOptions) {
   const key = keyOf(req);
   const hit = cache.get(key);
-  if (hit) return hit;
-  const p = provider.getPatch(req, onStep);
+  // A load that was stopped (the visitor left the screen) is not reused.
+  if (hit && !live.get(key)?.aborted) return hit;
+  const p = provider.getPatch(req, onStep, opts);
   cache.set(key, p);
-  p.catch(() => cache.delete(key));
+  live.set(key, opts?.signal);
+  const forget = (drop: boolean) => { if (cache.get(key) !== p) return; live.delete(key); if (drop) cache.delete(key); };
+  p.then(() => forget(false), () => forget(true));
   return p;
 }
 

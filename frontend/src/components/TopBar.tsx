@@ -8,6 +8,9 @@ import type { Theme } from '../state/theme';
 import { Icon } from './Icon';
 import { LANGS } from '../i18n';
 import { useI18n } from '../i18n/react';
+import { FovInput } from './FovInput';
+import { copyText, iframeSnippet } from '../lib/embedCode';
+import { searchErrorKey, useSearchSubmit, type SearchResult } from '../lib/useSearchSubmit';
 
 export function Logo({ size = 28 }: { size?: number }) {
   return (
@@ -24,10 +27,12 @@ export interface ToolControls {
   /** The target shown in the menu ('' when exploring somewhere else). */
   target: TargetId | '';
   onTarget: (id: TargetId) => void;
-  onSearch: (text: string) => string | null;
+  onSearch: (text: string) => SearchResult;
+  /** Official name of a position that was looked up by name (shown instead of "Custom position"). */
+  customLabel?: string;
   /** Only in Explore: the field of view can be changed. */
   fov?: { value: number; onChange: (v: number) => void };
-  share?: { url: string; aladin: string; realistic?: boolean };
+  share?: { url: string; embedUrl: string; aladin: string; realistic?: boolean };
   /** Realistic mode names targets plainly instead of as game cases. */
   targetLabel?: (c: CaseDef) => string;
 }
@@ -73,10 +78,10 @@ export function LangSwitch() {
   );
 }
 
-function ShareMenu({ url, aladin, realistic }: { url: string; aladin: string; realistic?: boolean }) {
+function ShareMenu({ url, embedUrl, realistic }: { url: string; embedUrl: string; realistic?: boolean }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'link' | 'embed' | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -86,40 +91,37 @@ function ShareMenu({ url, aladin, realistic }: { url: string; aladin: string; re
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
   }, [open]);
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-    } catch {
-      setCopied(false);
-    }
+  async function copy(what: 'link' | 'embed') {
+    const ok = await copyText(what === 'link' ? url : iframeSnippet(embedUrl));
+    setCopied(ok ? what : null);
   }
   return (
     <div className="menu-wrap" ref={ref}>
-      <button type="button" className="btn btn-sm" aria-label={t('share.label')} aria-haspopup="menu" aria-expanded={open} onClick={() => { setOpen((o) => !o); setCopied(false); }}>
+      <button type="button" className="btn btn-sm" aria-label={t('share.label')} aria-haspopup="menu" aria-expanded={open} onClick={() => { setOpen((o) => !o); setCopied(null); }}>
         <Icon name="link" size={14} /><span className="lbl">{t('share.label')}</span>
       </button>
       {open && (
         <div className="menu" role="menu">
-          <button type="button" role="menuitem" onClick={copy}><Icon name="copy" size={14} />{copied ? R.shareCopied : realistic ? R.shareCopy : t('share.copySpot')}</button>
-          <a role="menuitem" href={aladin} target="_blank" rel="noreferrer"><Icon name="external" size={14} />{R.shareAladin}</a>
+          <button type="button" role="menuitem" onClick={() => copy('link')}><Icon name="copy" size={14} />{copied === 'link' ? R.shareCopied : realistic ? R.shareCopy : t('share.copySpot')}</button>
+          <button type="button" role="menuitem" onClick={() => copy('embed')}><Icon name="copy" size={14} />{copied === 'embed' ? t('share.embedCopied') : t('share.copyEmbed')}</button>
+          <span className="sr-only" role="status">{copied === 'link' ? R.shareCopied : copied === 'embed' ? t('share.embedCopied') : ''}</span>
         </div>
       )}
     </div>
   );
 }
 
-function SearchBox({ onSearch }: { onSearch: (t: string) => string | null }) {
+function SearchBox({ onSearch }: { onSearch: (t: string) => SearchResult }) {
   const { t } = useI18n();
   const [text, setText] = useState('');
-  const [err, setErr] = useState<string | null>(null);
+  const { busy, error: err, submit, clear } = useSearchSubmit(onSearch);
   return (
     <form
       className="search"
       role="search"
       onSubmit={(e) => {
         e.preventDefault();
-        if (text.trim()) setErr(onSearch(text));
+        if (text.trim()) submit(text);
       }}
     >
       <Icon name="search" size={14} />
@@ -128,13 +130,14 @@ function SearchBox({ onSearch }: { onSearch: (t: string) => string | null }) {
         value={text}
         spellCheck={false}
         autoComplete="off"
-        onChange={(e) => { setText(e.target.value); setErr(null); }}
+        onChange={(e) => { setText(e.target.value); clear(); }}
         aria-label={t('search.label')}
         aria-describedby={err ? 'search-err' : undefined}
         placeholder={t('search.placeholder')}
       />
       <button type="submit" aria-label={t('search.go')}><Icon name="arrow" size={14} /></button>
-      {err && <p id="search-err" className="search-err" role="alert">{t('search.error')}</p>}
+      {busy && <p className="search-err search-busy" role="status">{t('resolve.busy', { name: busy })}</p>}
+      {err && <p id="search-err" className="search-err" role="alert">{t(searchErrorKey(err))}</p>}
     </form>
   );
 }
@@ -167,7 +170,7 @@ export function TopBar({ results, active, theme, onTheme, onHome, onCases, onExp
           <label className="select-wrap">
             <span className="sr-only">{t('tb.target')}</span>
             <select className="select" value={tool.target} onChange={(e) => e.target.value && tool.onTarget(e.target.value as TargetId)}>
-              {tool.target === '' && <option value="">{t('tb.custom')}</option>}
+              {tool.target === '' && <option value="">{tool.customLabel ?? t('tb.custom')}</option>}
               {CASES.map((c) => <option key={c.id} value={c.id}>{tool.targetLabel ? tool.targetLabel(c) : t('tb.caseOption', { n: c.n, nick: c.nick })}</option>)}
             </select>
           </label>
@@ -181,7 +184,13 @@ export function TopBar({ results, active, theme, onTheme, onHome, onCases, onExp
               ))}
             </div>
           )}
-          {tool.share && <ShareMenu url={tool.share.url} aladin={tool.share.aladin} realistic={tool.share.realistic} />}
+          {tool.fov && <FovInput valueDeg={tool.fov.value} onChange={tool.fov.onChange} />}
+          {tool.share && <ShareMenu url={tool.share.url} embedUrl={tool.share.embedUrl} realistic={tool.share.realistic} />}
+          {tool.share && (
+            <a className="btn btn-sm" href={tool.share.aladin} target="_blank" rel="noopener noreferrer" title={R.shareAladin} aria-label={R.shareAladin}>
+              <Icon name="external" size={14} /><span className="lbl">{R.shareAladin}</span>
+            </a>
+          )}
         </div>
       )}
 

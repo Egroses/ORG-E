@@ -1,0 +1,9 @@
+/* The page inside an iframe: the picture takes whatever room is left, the controls wrap under it. */
+.embed { box-sizing: border-box; width: 100%; height: 100vh; height: 100dvh; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--bg); color: var(--text); overflow: hidden; }
+.embed-sky { flex: 1 1 0; min-height: 0; width: 100%; container-type: size; display: grid; place-items: center; }
+.embed-sky .embed-canvas { width: min(100cqw, 100cqh); height: min(100cqw, 100cqh); aspect-ratio: 1; border-radius: 6px; }
+.embed-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px; }
+.embed-bar .seg { flex-wrap: wrap; max-width: 100%; }
+.embed-bar .seg button { min-width: 34px; }
+.embed-status { align-items: stretch; justify-content: center; padding: 16px; overflow: auto; }
+@media (max-width: 360px) { .embed .sky-lab b { font-size: 15px; } .embed .sky-lab { padding: 8px 8px 20px 10px; } .embed .sky-band { top: 6px; right: 6px; font-size: 11px; } }
