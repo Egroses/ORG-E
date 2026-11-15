@@ -1,8 +1,9 @@
 # Patch API contract (`GET /api/patch`)
 
-Status: **draft for review**. `imaging/` and the new frontend are being written on a separate branch and are **not on
-`main` yet**; this file is the shared contract they are written against. Written so that three pieces fit together
-without guessing:
+Status (15 Nov 2026): **implemented on `main`**. `imaging/` (`make_patch`, `encode_patch`), the backend route
+(`backend/app/patch.py`) and the frontend decoder (`frontend/src/data/realProvider.ts`) all follow this file; the contract
+fields below are unchanged. Only the notes about live queries and the 202 `progress` object were updated on 15 Nov.
+Written so that three pieces fit together without guessing:
 
 | Piece | Owner | What it does |
 | --- | --- | --- |
@@ -30,13 +31,29 @@ The same parameters always give the same job (the backend derives the job id fro
 
 **Cached targets and coordinates.** A request within 10 arcseconds of one of the five cached targets
 (`pipeline/targets.json`, positions at epoch 2026.0) is served from that target's cache; the backend must snap like this,
-because a field centred even one arcsecond away would otherwise miss the cache (the frontend sends the exact
-`targets.json` numbers, the reference dev server snaps within 3.6 arcsec).
+because a field centred even one arcsecond away would otherwise miss the cache. The real backend snaps within
+10 arcseconds (`SNAP_ARCSEC` in `backend/app/patch.py`); the frontend still sends the exact `targets.json` numbers; the
+reference dev server (`imaging/dev_server.py`, tests only) snaps within 0.001 degree (3.6 arcsec).
 
-**Live queries (coordinates that are not cached) are slow.** The backend developer estimates about 4-5 minutes per detector
-(an estimate from download speed, not measured by us), so `dets=2,4,6` would take about 13 minutes and `dets=1,...,6` about
-25 minutes. For such requests the server may accept only ONE detector and answer `400 bad_input` otherwise, or live queries may
-be switched off altogether (`LIVE_QUERIES=0`, recommended for the demo).
+**Live queries (coordinates that are not cached) are slow.** Since commit `48d4e82` (15 Nov) the one-detector limit is gone:
+for a position that is not cached the backend downloads **every requested detector** from the SPHEREx archive, one after the
+other, and then builds the patch. Each detector takes about 2 to 5 minutes. Measured live run (15 Nov, backend owner):
+RA 10, Dec 10, `dets=2,4,6` = 167 files in **15.5 minutes**, 0 failed. Other positions and `dets=1,...,6` were not timed
+by us (6 detectors would be roughly twice as long: an extrapolation, not a measurement). Live queries are on by default
+(`LIVE_QUERIES=1` in `backend/app/config.py`; `backend/render.yaml` still sets `"0"` for the hosted service, so a
+hosted copy answers `archive_unavailable` for uncached positions unless that value is changed. Whether the hosted service is
+deployed was not verified). With live queries off, an uncached position answers `200` with `"status": "failed"` and
+`"error": {"code": "archive_unavailable", ...}` at once.
+
+While the download runs, the `202` answer carries extra progress fields (details and a real example in
+`backend/docs/spectrum-api.md`, section 6): `progress.detector_done`, `progress.detector_total` (detectors finished / to fetch)
+and `progress.eta_s` (seconds left at the speed so far, `null` for the first five files). `total` and `done` count files
+over all detectors. During the stacking step after the download only `total`, `done`, `failed` are sent. Clients must
+ignore fields they do not know. A server restart in the middle keeps the files already downloaded; the next request fetches
+only the rest.
+
+The frontend therefore keeps polling every 2 s and gives up after **25 minutes** for a position that is not in the saved
+set (3 minutes for a saved target; `frontend/README.md`).
 
 **Epoch settings used by the frontend** (measured on the cached data, detectors 2,4,6):
 
@@ -52,10 +69,11 @@ be switched off altogether (`LIVE_QUERIES=0`, recommended for the demo).
 
 The request is idempotent and meant to be polled every ~2 s.
 
-* `202` while the patch is being built: `{"status": "queued" | "running", "id": "...", "progress": {"total": 58, "done": 31, "failed": 0}}`
+* `202` while the patch is being built: `{"status": "queued" | "running", "id": "...", "progress": {"total": 58, "done": 31, "failed": 0}}`.
+  During a live download `progress` also has `detector_done`, `detector_total` and `eta_s` (see "Live queries" above).
 * `200` when done: the full object below, `"status": "done"`.
 * `200` with `"status": "failed"` and `"error": {"code": "no_coverage" | "archive_unavailable" | "internal_error", "message": "..."}`
-  (same codes as the rest of the API). Invalid parameters, or too many detectors for a live query: HTTP 400 with
+  (same codes as the rest of the API). Invalid parameters (RA/Dec out of range, `fov` outside 0.05 – 0.25, `dets` not 1 to 6): HTTP 400 with
   `{"status": "failed", "error": {"code": "bad_input", "message": "..."}}`.
 
 Cached targets (the five test targets) answer `200` immediately.
@@ -120,6 +138,7 @@ Cached targets (the five test targets) answer `200` immediately.
    it about **2x smaller** (measured on real Barnard frames: the float pixel data compresses about 1.6x, the flag map much more),
    so about 0.55 MB on the wire. The backend should enable gzip for this route.
 6. **Version field.** Add `"contract": 1` at the top level when the shape changes; clients must ignore unknown keys.
+   (`imaging.encode_patch` already writes `"contract": 1`; the example above leaves it out.)
 7. **No NaN or Infinity in the JSON.** JSON cannot carry them and `JSON.parse` would reject the whole answer. `noise` is `null`
    when it cannot be measured (for example a frame without empty-sky pixels); clients treat `null` as "unknown". NaN *pixels*
    are fine: they live inside the base64 bytes.
