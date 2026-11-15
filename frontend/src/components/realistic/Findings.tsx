@@ -2,11 +2,12 @@ import { Fragment } from 'react';
 import type { Pt, SkyPatch } from '../../data/types';
 import { GROUPINGS, type GroupId } from '../../data/catalog';
 import type { CatalogueState } from '../../data/useCatalogue';
-import type { SpectrumState } from '../../data/spectrumApi';
+import { APERTURES, type Aperture, type SpectrumState, type SpectrumView } from '../../data/spectrumApi';
+import { findBlends, summarize, type Blend } from '../../sky/spectrum';
 import type { Candidate } from '../../state/progress';
 import { candidatesToCsv } from '../../state/progress';
 import type { Verdict, CatalogueSource } from '../../sky/catalogue';
-import { motionArcsecPerYear, sourceAt } from '../../sky/catalogue';
+import { motionArcsecPerYear, pmUnreliable, sourceAt } from '../../sky/catalogue';
 import type { ChangesResult, FieldChange } from '../../sky/changes';
 import type { Measurement } from '../../sky/measure';
 import {
@@ -14,9 +15,9 @@ import {
 } from '../../sky/photometry';
 import { formatDec, formatDecFine, formatRa, formatRaFine, mjdToYear, pixelToSky } from '../../sky/astro';
 import { mjdToDateText } from '../../lib/format';
-import { num, sig as sigFmt } from '../../i18n';
+import { num, sig as sigFmt, t } from '../../i18n';
 import { useI18n } from '../../i18n/react';
-import { FluxChart, SpectrumChart } from '../Charts';
+import { ChannelSpectrumChart, FluxChart, SpectrumChart } from '../Charts';
 import { Icon } from '../Icon';
 import { R, fluxText, flagPct } from '../../ui/realisticText';
 import { changeAmountText, changeWhereText } from '../../sky/changes';
@@ -187,21 +188,100 @@ export function PhotometrySection({ patch, table, series, epoch }: PhotProps) {
 
 // ---------------------------------------------------------------- spectrum
 
-export function SpectrumSection({ spectrum, hasMark }: { spectrum: SpectrumState; hasMark: boolean }) {
+interface SpecProps {
+  spectrum: SpectrumState;
+  hasMark: boolean;
+  view: SpectrumView;
+  aperture: Aperture;
+  onView: (v: SpectrumView) => void;
+  onAperture: (a: Aperture) => void;
+  /** Measured position and the year of the picture it was marked on (blend check). */
+  at: { ra: number; dec: number } | null;
+  year: number;
+  /** Everything loaded from Gaia and CatWISE, to look for neighbours inside the aperture. */
+  sources: CatalogueSource[];
+  catalogueReady: boolean;
+}
+
+/** One note for the nearest Gaia star and one for the nearest WISE source inside the aperture. */
+function blendLines(blends: Blend[], aperture: number): string[] {
+  const tip = aperture > 1 ? t('sui.blendTip') : '';
+  const out: string[] = [];
+  const gaia = blends.filter((b) => b.source.origin === 'gaia');
+  const wise = blends.filter((b) => b.source.origin === 'wise');
+  const more = (n: number) => (n > 1 ? t('sui.blendMore', { n: n - 1 }) : '');
+  if (gaia[0]) {
+    const s = gaia[0].source, d = num(gaia[0].distArcsec, 1);
+    out.push((s.gmag != null ? t('sui.blendGaia', { g: num(s.gmag, 1), d, tip }) : t('sui.blendGaiaNoG', { d, tip })) + more(gaia.length));
+  }
+  if (wise[0]) {
+    const s = wise[0].source, d = num(wise[0].distArcsec, 1);
+    out.push((s.w2 != null ? t('sui.blendWise', { w2: num(s.w2, 1), d, tip: gaia[0] ? '' : tip }) : t('sui.blendWiseNoMag', { d, tip: gaia[0] ? '' : tip })) + more(wise.length));
+  }
+  return out;
+}
+
+export function SpectrumSection({ spectrum, hasMark, view, aperture, onView, onAperture, at, year, sources, catalogueReady }: SpecProps) {
   useI18n();
   if (!hasMark) return <p className="empty">{R.spectrumNeedMark}</p>;
-  if (spectrum.status === 'loading') return <p className="empty">{R.spectrumLoading}</p>;
-  if (spectrum.status === 'unavailable') return <p className="empty">{R.spectrumUnavailable}</p>;
-  if (spectrum.status === 'empty') return <p className="empty">{R.spectrumEmpty}</p>;
-  if (spectrum.status === 'ok') {
-    return (
+  const controls = (
+    <div className="spec-controls">
+      <div className="seg" role="group" aria-label={t('sui.viewTitle')}>
+        <button type="button" aria-pressed={view === 'binned'} onClick={() => onView('binned')} title={t('sui.viewBinnedHelp')}>{t('sui.viewBinned')}</button>
+        <button type="button" aria-pressed={view === 'all'} onClick={() => onView('all')} title={t('sui.viewAllHelp')}>{t('sui.viewAll')}</button>
+      </div>
+      <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+        <span className="t-micro c-3" title={t('sui.apHelp')}>{t('sui.apTitle')}</span>
+        <div className="seg" role="group" aria-label={t('sui.apTitle')} title={t('sui.apHelp')}>
+          {APERTURES.map((a) => <button key={a} type="button" aria-pressed={aperture === a} onClick={() => onAperture(a)}>{t('sui.apOption', { n: a })}</button>)}
+        </div>
+      </div>
+    </div>
+  );
+  let body: React.ReactNode = null;
+  if (spectrum.status === 'loading') body = <p className="empty" role="status">{t('sui.loading')}</p>;
+  else if (spectrum.status === 'nocoverage') body = <p className="empty">{t('sui.noCoverage')}</p>;
+  else if (spectrum.status === 'error') body = <p className="empty" role="alert">{t('sui.error')}</p>;
+  else if (spectrum.status === 'empty' || spectrum.status === 'ok') {
+    const r = spectrum.result;
+    const ap = r?.kind === 'binned' ? r.data.aperturePx : aperture;
+    const blends = at ? findBlends(at, ap, sources, year) : [];
+    const blendNotes = catalogueReady ? blendLines(blends, ap) : [t('sui.blendNoCatalogue')];
+    let sat = false, masked = false;
+    let summary = '';
+    let chart: React.ReactNode = null;
+    let warnings: string[] = [];
+    if (r?.kind === 'binned') {
+      const sm = summarize(r.data.channels);
+      sat = sm.saturated > 0;
+      masked = !sat && sm.lowerLimits > 0;
+      warnings = r.data.warnings;
+      summary = t('sui.summary', { used: sm.withValue, total: sm.total, n: sm.exposures, skipped: sm.skipped, ap: num(r.data.aperturePx, 0) });
+      chart = spectrum.status === 'ok' ? <ChannelSpectrumChart channels={r.data.channels} label={t('sui.chartBinned')} /> : null;
+      if (sm.empty > 0 && spectrum.status === 'ok') summary += ' ' + t('sui.gapsNote', { n: sm.empty });
+    } else if (r?.kind === 'all') {
+      const limits = r.points.filter((p) => p.lowerLimit).length;
+      sat = r.points.some((p) => p.saturated);
+      masked = !sat && limits > 0;
+      summary = t('sui.summaryAll', { n: r.points.length, limits, bad: r.points.filter((p) => p.flagged).length });
+      chart = r.points.length ? <SpectrumChart points={r.points} label={t('sui.chartAll')} /> : null;
+    }
+    body = (
       <>
-        <SpectrumChart points={spectrum.points} label={R.spectrumLabel} />
-        <p className="t-caption c-3">{R.spectrumNote}</p>
+        {spectrum.status === 'empty' && <p className="empty">{t('sui.empty')}</p>}
+        {chart}
+        <p className="t-caption c-3">{summary}</p>
+        <div className="spec-notes">
+          {sat && <p className="note warn">{t('sui.saturated')}</p>}
+          {masked && <p className="note">{t('sui.masked')}</p>}
+          {warnings.length > 0 && <p className="note"><b>{t('sui.backendWarnings')}</b> {warnings.join(' ')}</p>}
+          {blendNotes.map((n, i) => <p key={i} className={`note${blends.length ? ' warn' : ''}`}>{n}</p>)}
+          {!blends.length && catalogueReady && <p className="t-caption c-3">{t('sui.blendNone')}</p>}
+        </div>
       </>
     );
   }
-  return null;
+  return <>{controls}{body}</>;
 }
 
 // ---------------------------------------------------------------- catalogue
@@ -214,9 +294,23 @@ interface CatProps {
   verdict: Verdict | null;
   measurement: Measurement | null;
   onPick: (s: CatalogueSource) => void;
+  /** WISE marks are on (rows then include CatWISE entries). */
+  showWise?: boolean;
 }
 
-export function CatalogueSection({ patch, epoch, catalogue, rows, verdict, measurement, onPick }: CatProps) {
+function PmSnr({ s }: { s: CatalogueSource }) {
+  if (s.origin === 'known') return <>{'–'}</>;
+  if (s.pmSnr == null) return <span title={t('sui.pmHelp')}>{t('sui.snrUnknown')}</span>;
+  const low = pmUnreliable(s);
+  return <span className={low ? 'pm-snr-low' : undefined} title={low ? t('sui.snrLow') : t('sui.snrOk')}>{num(s.pmSnr, s.pmSnr >= 10 ? 0 : 1)}{low ? ' !' : ''}</span>;
+}
+
+const magText = (s: CatalogueSource) =>
+  s.origin === 'wise'
+    ? (s.w1 != null || s.w2 != null ? t('sui.magW', { w1: s.w1 != null ? num(s.w1, 1) : '–', w2: s.w2 != null ? num(s.w2, 1) : '–' }) : R.catNoG)
+    : s.gmag != null ? t('sui.magG', { v: num(s.gmag, 1) }) : R.catNoG;
+
+export function CatalogueSection({ patch, epoch, catalogue, rows, verdict, measurement, onPick, showWise = false }: CatProps) {
   useI18n();
   const year = mjdToYear(patch.epochs[epoch].mjd);
   return (
@@ -227,7 +321,9 @@ export function CatalogueSection({ patch, epoch, catalogue, rows, verdict, measu
           <h3 className="t-micro c-3">{R.catMatchTitle}</h3>
           <p className="t-body">
             {verdict.source && verdict.offsetArcsec !== null && verdict.catRate !== null
-              ? R.catMatch(verdict.source.name, verdict.offsetArcsec, verdict.catRate, measurement?.rate ?? null, verdict.kind === 'match')
+              ? (verdict.kind === 'weak'
+                ? `${R.catMatch(verdict.source.name, verdict.offsetArcsec, verdict.catRate, null, false)} ${t('sui.catMatchWeak', { snr: num(verdict.source.pmSnr ?? 0, 1) })}`
+                : R.catMatch(verdict.source.name, verdict.offsetArcsec, verdict.catRate, measurement?.rate ?? null, verdict.kind === 'match'))
               : R.catMatchNone}
           </p>
         </div>
@@ -235,15 +331,16 @@ export function CatalogueSection({ patch, epoch, catalogue, rows, verdict, measu
       {rows.length === 0 ? <p className="empty">{R.catEmpty}</p> : (
         <div className="tbl-scroll cat-scroll">
           <table className="mini cat-table">
-            <thead><tr><th>{R.catCols.name}</th><th className="num">{R.catCols.g}</th><th className="num">{R.catCols.pm}</th><th>{R.catCols.pos}</th></tr></thead>
+            <thead><tr><th>{R.catCols.name}</th><th className="num">{t('sui.colMag')}</th><th className="num">{R.catCols.pm}</th><th className="num" title={t('sui.pmHelp')}>{t('sui.colSnr')}</th><th>{R.catCols.pos}</th></tr></thead>
             <tbody>
               {rows.map((s) => {
                 const p = sourceAt(s, year);
                 return (
                   <tr key={s.id}>
                     <td><button type="button" className="btn-link" onClick={() => onPick(s)} title={R.catClick}>{s.name}</button></td>
-                    <td className="num">{s.gmag != null ? num(s.gmag, 1) : R.catNoG}</td>
+                    <td className="num">{magText(s)}</td>
                     <td className="num">{num(motionArcsecPerYear(s) * 1000, 0)}</td>
+                    <td className="num"><PmSnr s={s} /></td>
                     <td className="mono">{formatRa(p.ra)}<br />{formatDec(p.dec)}</td>
                   </tr>
                 );
@@ -252,7 +349,13 @@ export function CatalogueSection({ patch, epoch, catalogue, rows, verdict, measu
           </table>
         </div>
       )}
+      {catalogue.wise.status === 'loading' && <p className="t-caption c-3" role="status">{t('sui.wiseLoading')}</p>}
+      {catalogue.wise.status === 'archive' && <p className="note" role="status">{t('sui.wiseArchive')}</p>}
+      {catalogue.wise.status === 'unreachable' && <p className="note" role="status">{t('sui.wiseDown')}</p>}
+      {catalogue.wise.status === 'ok' && showWise && !rows.some((r) => r.origin === 'wise') && <p className="t-caption c-3">{t('sui.wiseEmpty')}</p>}
       <p className="t-caption c-3">{R.catClick} {R.trails}</p>
+      <p className="t-caption c-3">{t('sui.pmHelp')}</p>
+      <p className="t-caption c-3">{t('sui.wiseHelp')}</p>
     </div>
   );
 }

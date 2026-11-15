@@ -25,6 +25,7 @@
   --bad: #be123c;
   --bad-soft: #fde8ee;
   --gaia: #0b7fab;
+  --wise: #4d7c0f;
   --known: #b45f06;
   --flag: #d6247f;
   --sky-bg: #090a0d;
@@ -57,6 +58,7 @@
   --bad: #fb7185;
   --bad-soft: #3a1119;
   --gaia: #7fdbff;
+  --wise: #b5e55c;
   --known: #ffb347;
   --flag: #ff4ca8;
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
@@ -120,7 +122,7 @@ a { color: inherit; text-decoration: none; }
 .tag { border: 1px solid var(--border); display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--elevated); color: var(--text-2); font: 500 12px/1.4 var(--sans); white-space: nowrap; }
 .tag.line { background: none; border: 1px solid var(--border-2); color: var(--text-3); }
 .tag-match { background: var(--ok-soft); color: var(--ok); }
-.tag-partial, .tag-mismatch, .tag-unmeasured { background: var(--warn-soft); color: var(--warn); }
+.tag-partial, .tag-mismatch, .tag-unmeasured, .tag-weak { background: var(--warn-soft); color: var(--warn); }
 .tag-none { background: var(--elevated); color: var(--text-2); }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-panel); }
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-panel); }
@@ -392,7 +394,7 @@ input[type='range'] { width: 100px; height: 16px; accent-color: var(--accent); c
 .measure-say { font: 500 13px/1.5 var(--sans); }
 .verdict { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--elevated); }
 .verdict.match { border-color: var(--ok); }
-.verdict.mismatch, .verdict.none { border-color: var(--warn); }
+.verdict.mismatch, .verdict.none, .verdict.weak { border-color: var(--warn); }
 .changes { display: flex; flex-direction: column; gap: 4px; }
 .changes li button { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; text-align: left; }
 .changes li button:hover { background: var(--elevated); }
@@ -583,3 +585,19 @@ input[type='range'] { width: 100px; height: 16px; accent-color: var(--accent); c
 .cuts label { grid-template-columns: 72px minmax(60px, 1fr) 104px; }
 .ctl-group.cuts { min-width: 320px; }
 .cuts output { min-width: 0; white-space: nowrap; font-size: 10.5px; }
+
+/* ---- spectrum panel (102 channels), CatWISE layer ---- */
+.chart-gap { fill: var(--text-3); opacity: .55; }
+.chart-ch { cursor: pointer; }
+.chart-legend i.hollow { background: var(--surface); border: 1.5px solid var(--text-2); }
+.chart-legend i.gap { border-radius: 1px; width: 11px; height: 5px; background: var(--text-3); opacity: .55; vertical-align: 1px; }
+.chart-readout { min-height: 2.6em; margin: 4px 0 0; }
+.spec-controls { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-bottom: 6px; }
+.spec-controls .seg button { min-width: 32px; }
+.spec-notes { display: grid; gap: 6px; margin-top: 6px; }
+.spec-notes .note { margin: 0; }
+.mk.wise { border-radius: 1px; border: 1.5px solid var(--wise); }
+.layer[aria-pressed='true'] .mk.wise { border-color: var(--wise); }
+.sky-ring.square { border-radius: 0; }
+.sky-arrow { stroke-linecap: round; }
+.pm-snr-low { color: var(--warn, #b45f06); }

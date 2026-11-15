@@ -12,6 +12,7 @@ interface GaiaRow {
   gmag?: number | null;
   pmra?: number | null;
   pmdec?: number | null;
+  pm_snr?: number | null;
 }
 
 export function adaptGaia(rows: unknown): CatalogueSource[] {
@@ -28,6 +29,7 @@ export function adaptGaia(rows: unknown): CatalogueSource[] {
       pmRa: r.pmra ?? 0,
       pmDec: r.pmdec ?? 0,
       gmag: r.gmag ?? null,
+      pmSnr: typeof r.pm_snr === 'number' && Number.isFinite(r.pm_snr) ? r.pm_snr : null,
       origin: 'gaia',
     });
   }

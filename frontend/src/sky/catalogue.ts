@@ -21,8 +21,18 @@ export interface CatalogueSource {
   pmRa: number;
   pmDec: number;
   gmag: number | null;
-  origin: 'gaia' | 'known';
+  origin: 'gaia' | 'known' | 'wise';
+  /** Proper motion over its error (significance). null = unknown. Below PM_SNR_MIN the motion is not reliable. */
+  pmSnr?: number | null;
+  /** CatWISE only: WISE 3.4 and 4.6 micrometre magnitudes (Vega). */
+  w1?: number | null;
+  w2?: number | null;
 }
+
+/** Below this significance a catalogue motion is not reliable and is never used to claim agreement. */
+export const PM_SNR_MIN = 3;
+/** True only when the significance is known and too low. */
+export const pmUnreliable = (s: { pmSnr?: number | null }) => typeof s.pmSnr === 'number' && s.pmSnr < PM_SNR_MIN;
 
 /** Where the source is at a given year. */
 export function sourceAt(s: CatalogueSource, year: number): { ra: number; dec: number } {
@@ -56,7 +66,8 @@ export function inField(patch: SkyPatch, sources: CatalogueSource[], margin = 2)
     sourcePixels(patch, s).some((p) => p.x >= -margin && p.y >= -margin && p.x < patch.size + margin && p.y < patch.size + margin));
 }
 
-export type VerdictKind = 'match' | 'mismatch' | 'none' | 'unmeasured';
+/** 'weak': a catalogue source is at the marked spot but its own motion is not reliable (pm significance < 3), so motion is not compared. */
+export type VerdictKind = 'match' | 'mismatch' | 'weak' | 'none' | 'unmeasured';
 
 export interface Verdict {
   kind: VerdictKind;
@@ -73,12 +84,14 @@ export interface Verdict {
 const fmt = (v: number) => (v >= 10 ? num(v, 0) : v >= 1 ? num(v, 1) : num(v, 2));
 export type SourceRef = Pick<CatalogueSource, 'name' | 'origin' | 'gmag'>;
 const sourceLabel = (s: SourceRef) =>
-  s.origin === 'gaia' ? t(s.gmag != null ? 'cat.gaiaStarG' : 'cat.gaiaStar', { name: s.name, g: s.gmag != null ? num(s.gmag, 1) : '' }) : s.name;
+  s.origin === 'gaia' ? t(s.gmag != null ? 'cat.gaiaStarG' : 'cat.gaiaStar', { name: s.name, g: s.gmag != null ? num(s.gmag, 1) : '' })
+    : s.origin === 'wise' ? t('sui.wiseSource', { name: s.name }) : s.name;
 
 /** The verdict sentence in the current language. */
 export function verdictText(v: { kind: VerdictKind; source: SourceRef | null; catRate: number | null; moves: 'rate' | 'still' | null }): string {
   if (v.kind === 'unmeasured') return t('verdict.unmeasured');
   if (v.kind === 'none' || !v.source) return t('verdict.none');
+  if (v.kind === 'weak') return t('sui.verdictWeak', { name: sourceLabel(v.source) });
   const moves = v.moves === 'rate' && v.catRate !== null ? t('verdict.moves', { rate: fmt(v.catRate) }) : t('verdict.still');
   return t(v.kind === 'match' ? 'verdict.match' : 'verdict.mismatch', { name: sourceLabel(v.source), moves });
 }
@@ -116,6 +129,8 @@ export function checkCatalogue(patch: SkyPatch, m: Measurement, sources: Catalog
   const diff = Math.hypot(pe - m.east, pn - m.north);
   const agree = diff <= Math.max(2, 2 * m.errArcsec);
   const moves = rate >= 0.05 ? 'rate' : 'still';
+  // A catalogue motion that is itself not significant cannot confirm or contradict anything.
+  if (pmUnreliable(s)) return { kind: 'weak', source: s, offsetArcsec: best.d, catRate: rate, candidate: true, moves };
   if (agree) return { kind: 'match', source: s, offsetArcsec: best.d, catRate: rate, candidate: false, moves };
   return { kind: 'mismatch', source: s, offsetArcsec: best.d, catRate: rate, candidate: true, moves };
 }

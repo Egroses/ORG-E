@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CompareMode, Pt, SkyPatch } from '../data/types';
 import { GROUPINGS, type GroupId } from '../data/catalog';
-import { SkyCanvas, type Ring } from '../components/SkyCanvas';
+import { SkyCanvas, type Arrow, type Ring } from '../components/SkyCanvas';
 import { Icon } from '../components/Icon';
 import { VisitGrid } from '../components/realistic/VisitGrid';
 import { ColorBar } from '../components/realistic/ColorBar';
@@ -10,7 +10,8 @@ import {
 } from '../components/realistic/Findings';
 import { useCatalogue } from '../data/useCatalogue';
 import { savedCopyText } from '../data/staticProvider';
-import { useSpectrum } from '../data/spectrumApi';
+import { useSpectrum, type Aperture, type SpectrumView } from '../data/spectrumApi';
+import { wiseMarks } from '../sky/wiseMarks';
 import { measureBest } from '../sky/measure';
 import { checkCatalogue, sourcePixels, type CatalogueSource } from '../sky/catalogue';
 import { findChanges, type FieldChange } from '../sky/changes';
@@ -81,6 +82,9 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
   const [magnify, setMagnify] = useState(false);
   const [invert, setInvert] = useState(false);
   const [showCat, setShowCat] = useState(true);
+  const [showWise, setShowWise] = useState(true);
+  const [aperture, setAperture] = useState<Aperture>(initial.aperture);
+  const [specView, setSpecView] = useState<SpectrumView>(initial.spec);
   const [mark, setMark] = useState<Pt | null>(null);
   const [focusPt, setFocusPt] = useState<Pt | null>(null);
   const [sheet, setSheet] = useState<Sheet>('find');
@@ -91,10 +95,10 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
   useEffect(() => {
     onState({
       band: patch.bands[band].id, visit: epoch, ref: compare === 'diff' ? refEpoch : undefined, mode: compare,
-      stretch: stretchFn, lo, hi, group: initial.group, quality,
+      stretch: stretchFn, lo, hi, group: initial.group, quality, aperture, spec: specView,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [band, epoch, refEpoch, compare, stretchFn, lo, hi, quality]);
+  }, [band, epoch, refEpoch, compare, stretchFn, lo, hi, quality, aperture, specView]);
 
   const hasShare = !!patch.flagShare;
   const physical = !!patch.noiseRefMJySr;
@@ -147,14 +151,15 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
   const positions = useMemo(() => (mark ? positionsByVisit(patch, mark, measurement) : null), [mark, patch, measurement]);
   const table = useMemo(() => (positions && physical ? photometryTable(patch, positions) : null), [positions, patch, physical]);
   const series = useMemo(() => (table ? fluxSeries(patch, table) : []), [table, patch]);
-  const catalogue = useCatalogue(patch, true);
+  const catalogue = useCatalogue(patch, true, true);
+  const verdictSources = useMemo(() => [...catalogue.sources, ...catalogue.wise.sources], [catalogue.sources, catalogue.wise.sources]);
   const verdict = useMemo(
-    () => (measurement && measurement.status === 'ok' ? checkCatalogue(patch, measurement, catalogue.sources) : null),
-    [measurement, patch, catalogue.sources],
+    () => (measurement && measurement.status === 'ok' ? checkCatalogue(patch, measurement, verdictSources) : null),
+    [measurement, patch, verdictSources],
   );
   const changes = useMemo(() => findChanges(patch, band), [patch, band]);
   const spectrumAt = useMemo(() => (positions ? pixelToSky(patch, positions[epoch].x, positions[epoch].y) : null), [positions, patch, epoch]);
-  const spectrum = useSpectrum(spectrumAt ? { ra: spectrumAt.ra, dec: spectrumAt.dec } : null, patch.source === 'irsa');
+  const spectrum = useSpectrum(spectrumAt ? { ra: spectrumAt.ra, dec: spectrumAt.dec } : null, patch.source === 'irsa', specView, aperture);
   const shares = useMemo(() => fieldShares(patch, epoch, band), [patch, epoch, band]);
 
   // ---------- catalogue marks ----------
@@ -178,12 +183,16 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
     return { rings, paths, inView };
   }, [patch, epoch, catalogue.sources, nEp, lang]);
 
+  const wise = useMemo(() => wiseMarks(patch, epoch, catalogue.wise.sources, MAX_MARKS), [patch, epoch, catalogue.wise.sources]);
+  const tableRows = useMemo(() => (showWise ? [...catalogueMarks.inView, ...wise.inView] : catalogueMarks.inView), [catalogueMarks.inView, wise.inView, showWise]);
+
   const measureRings = useMemo<Ring[]>(() => {
     if (!measurement || measurement.status !== 'ok') return [];
     const p = measurement.points.find((q) => q.epoch === epoch);
     return p ? [{ x: p.x, y: p.y, color: MEASURE_COLOR, r: 2.2 * (6.15 / patch.pixelScale) / 2 + 0.8, label: measuredLabel }] : [];
   }, [measurement, epoch, patch.pixelScale, measuredLabel]);
-  const rings = [...measureRings, ...(showCat ? catalogueMarks.rings : [])];
+  const rings = [...measureRings, ...(showCat ? catalogueMarks.rings : []), ...(showWise ? wise.rings : [])];
+  const arrows: Arrow[] = showWise ? wise.arrows : [];
 
   function pickChange(c: FieldChange) {
     setFocusPt({ x: c.x, y: c.y });
@@ -294,6 +303,7 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
             stackEpochs={stackUsed}
             mark={mark}
             rings={rings}
+            arrows={arrows}
             path={showCat && catalogueMarks.paths.length ? catalogueMarks.paths[0] : undefined}
             focus={focusPt}
             onTap={(p) => { setMark(p); setCandSaved(false); setFocusPt(null); }}
@@ -408,6 +418,7 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
           </div>
           <div className="layers ctl-group" role="group" aria-label={t('r.layersGroup')}>
             <button type="button" className="layer" aria-pressed={showCat} onClick={() => setShowCat((v) => !v)}><i className="mk gaia" />{R.catalogueMarks}</button>
+            <button type="button" className="layer" aria-pressed={showWise} onClick={() => setShowWise((v) => !v)} title={t('sui.catWiseTitle')}><i className="mk wise" />{t('sui.catWise')}</button>
             <button type="button" className="layer" aria-pressed={grid} onClick={() => setGrid((g) => !g)}>{R.grid}</button>
             <button type="button" className="layer" aria-pressed={magnify} onClick={() => setMagnify((m) => !m)}>{R.magnifier}</button>
             <button type="button" className="layer" aria-pressed={invert} onClick={() => setInvert((v) => !v)}>{R.invert}</button>
@@ -427,11 +438,22 @@ export function RealisticTool({ patch, initial, onState, onGroup, candidates, on
         </section>
         <section className="block" aria-label={R.spectrumTitle}>
           <h2 className="t-label">{R.spectrumTitle}</h2>
-          <SpectrumSection spectrum={spectrum} hasMark={!!mark && patch.source === 'irsa'} />
+          <SpectrumSection
+            spectrum={spectrum}
+            hasMark={!!mark && patch.source === 'irsa'}
+            view={specView}
+            aperture={aperture}
+            onView={setSpecView}
+            onAperture={setAperture}
+            at={spectrumAt}
+            year={mjdToYear(ep.mjd)}
+            sources={verdictSources}
+            catalogueReady={catalogue.status === 'ok' && catalogue.wise.status !== 'loading'}
+          />
         </section>
         <section className="block" aria-label={R.catTitle}>
           <h2 className="t-label">{R.catTitle}</h2>
-          <CatalogueSection patch={patch} epoch={epoch} catalogue={catalogue} rows={catalogueMarks.inView} verdict={verdict} measurement={measurement} onPick={pickSource} />
+          <CatalogueSection patch={patch} epoch={epoch} catalogue={catalogue} rows={tableRows} verdict={verdict} measurement={measurement} onPick={pickSource} showWise={showWise} />
           {catalogueMarks.inView.length > MAX_MARKS && <p className="t-caption c-3">{R.showingBrightest(MAX_MARKS, catalogueMarks.inView.length)}</p>}
         </section>
         <section className="block" aria-label={R.changesTitle}>

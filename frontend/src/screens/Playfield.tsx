@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Chip, CompareMode, Detail, Epoch, Pt, SkyPatch } from '../data/types';
 import type { CaseDef } from '../data/catalog';
 import { KNOWN } from '../data/catalog';
-import { SkyCanvas, type Ring } from '../components/SkyCanvas';
+import { SkyCanvas, type Arrow, type Ring } from '../components/SkyCanvas';
 import { ObservationMap } from '../components/ObservationMap';
 import { MeasureCard } from '../components/MeasureCard';
 import { ChangesList } from '../components/ChangesList';
@@ -17,6 +17,7 @@ import { Rich } from '../components/Term';
 import { findChanges, type FieldChange } from '../sky/changes';
 import type { StretchFn } from '../sky/render';
 import { useCatalogue } from '../data/useCatalogue';
+import { wiseMarks } from '../sky/wiseMarks';
 import { savedCopyText } from '../data/staticProvider';
 import { mjdToDateText, pct1 } from '../lib/format';
 import type { Candidate, Observation } from '../state/progress';
@@ -114,6 +115,7 @@ export function Playfield({ mode, patch, caseDef, onReveal, onSaveObservation, o
   const [stretch, setStretch] = useState<StretchFn>('asinh');
   const [compare, setCompare] = useState<CompareMode>('blink');
   const [showKnown, setShowKnown] = useState(true);
+  const [showWise, setShowWise] = useState(true);
   const [mark, setMark] = useState<Pt | null>(null);
   const [chips, setChips] = useState<Chip[]>([]);
   const [sheet, setSheet] = useState<Sheet>('find');
@@ -141,10 +143,12 @@ export function Playfield({ mode, patch, caseDef, onReveal, onSaveObservation, o
   const key = useMemo(() => (mode === 'case' && caseDef ? answerKey(patch, KNOWN[caseDef.id]) : null), [mode, caseDef, patch]);
 
   const measurement = useMemo(() => (mark ? measureBest(patch, mark) : null), [mark, patch]);
-  const catalogue = useCatalogue(patch, mode === 'explore');
+  const catalogue = useCatalogue(patch, mode === 'explore', mode === 'explore');
+  const verdictSources = useMemo(() => [...catalogue.sources, ...catalogue.wise.sources], [catalogue.sources, catalogue.wise.sources]);
+  const wise = useMemo(() => (mode === 'explore' ? wiseMarks(patch, epoch, catalogue.wise.sources) : { rings: [] as Ring[], arrows: [] as Arrow[], inView: [] }), [mode, patch, epoch, catalogue.wise.sources]);
   const verdict = useMemo(
-    () => (mode === 'explore' && measurement ? checkCatalogue(patch, measurement, catalogue.sources) : undefined),
-    [mode, measurement, patch, catalogue.sources],
+    () => (mode === 'explore' && measurement ? checkCatalogue(patch, measurement, verdictSources) : undefined),
+    [mode, measurement, patch, verdictSources],
   );
   const changes = useMemo(() => (mode === 'explore' ? findChanges(patch, band) : null), [mode, patch, band]);
 
@@ -294,7 +298,7 @@ export function Playfield({ mode, patch, caseDef, onReveal, onSaveObservation, o
     skyRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
   }
 
-  const marks = mode === 'case' ? (shown ? shownRings : [...measureRings, ...hintRings]) : [...measureRings, ...(showKnown ? catalogueMarks.rings : [])];
+  const marks = mode === 'case' ? (shown ? shownRings : [...measureRings, ...hintRings]) : [...measureRings, ...(showKnown ? catalogueMarks.rings : []), ...(showWise ? wise.rings : [])];
 
   // Timeline: visits placed by their mid-date, to scale.
   const mjds = eps.map((e) => e.mjd);
@@ -360,6 +364,7 @@ export function Playfield({ mode, patch, caseDef, onReveal, onSaveObservation, o
             stretch={stretch}
             mark={mark}
             rings={marks}
+            arrows={mode === 'explore' && showWise ? wise.arrows : undefined}
             path={shown && key ? (ringsOn && key.motionPx >= 0.4 ? key.positions : undefined)
               : mode === 'explore' && showKnown && catalogueMarks.paths.length ? catalogueMarks.paths[0] : undefined}
             pathColor={shown ? SHOW_COLOR : undefined}
@@ -430,6 +435,11 @@ export function Playfield({ mode, patch, caseDef, onReveal, onSaveObservation, o
                 <i className="mk gaia" />{t('r.catalogueMarks')}
               </button>
             )}
+            {mode === 'explore' && (
+              <button type="button" className="layer" aria-pressed={showWise} onClick={() => setShowWise((v) => !v)} title={t('sui.catWiseTitle')}>
+                <i className="mk wise" />{t('sui.catWise')}
+              </button>
+            )}
             <button type="button" className="layer" aria-pressed={showFlags} onClick={() => setShowFlags((v) => !v)} title={t('pf.flagsTitle')}>
               <i className="mk flags" />{t('pf.flags')}
             </button>
@@ -454,6 +464,13 @@ export function Playfield({ mode, patch, caseDef, onReveal, onSaveObservation, o
                 {' '}<i className="mk gaia" /> {t('pf.legendGaia')}, <i className="mk known" /> {t('pf.legendKnown')}.
                 {catalogueMarks.total > catalogueMarks.rings.length && ` ${t('r.showingBrightest', { n: catalogueMarks.rings.length, total: catalogueMarks.total })}`}
                 {catalogue.status === 'unavailable' && ` ${t('pf.gaiaDown')}`}
+              </>
+            )}
+            {mode === 'explore' && showWise && (
+              <>
+                {' '}<i className="mk wise" /> {t('sui.legendWise')}. {t('sui.wiseHelp')}
+                {catalogue.wise.status === 'archive' && ` ${t('sui.wiseArchive')}`}
+                {catalogue.wise.status === 'unreachable' && ` ${t('sui.wiseDown')}`}
               </>
             )}
             {showFlags && ` ${t('pf.magenta')}`}

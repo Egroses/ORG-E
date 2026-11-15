@@ -4,7 +4,8 @@ import { tr as app } from './parts/app';
 import { tr as data } from './parts/data';
 import { tr as realistic } from './parts/realistic';
 import { tr as frontB } from './parts/front-b';
+import { tr as specUi } from './parts/spec-ui';
 
 export type Dict = Record<keyof typeof en, string>;
 
-export const tr: Dict = { ...app, ...data, ...realistic, ...frontB };
+export const tr: Dict = { ...app, ...data, ...realistic, ...frontB, ...specUi };

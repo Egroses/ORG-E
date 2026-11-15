@@ -47,7 +47,7 @@ export interface ChartLayout {
   xDomain: [number, number];
 }
 
-const fmtTick = (v: number) => {
+export const fmtTick = (v: number) => {
   const a = Math.abs(v);
   if (a === 0) return '0';
   if (a >= 100) return v.toFixed(0);
@@ -113,7 +113,12 @@ export interface SpectrumPoint {
   err_mjy: number;
   mjd?: number;
   detector?: number;
+  /** A hard bad bit in the aperture (backend meaning since 15 Nov: not any flag). */
   flagged?: boolean;
+  saturated?: boolean;
+  /** The true flux may be higher (saturated, or pixels without value in the aperture). */
+  lowerLimit?: boolean;
+  maskedPx?: number;
 }
 
 /** Validates the answer of GET /api/spectrum; rows without finite numbers are dropped. */
@@ -129,20 +134,23 @@ export function adaptSpectrum(rows: unknown): SpectrumPoint[] {
       mjd: Number.isFinite(Number(r?.mjd)) ? Number(r.mjd) : undefined,
       detector: Number.isFinite(Number(r?.detector)) ? Number(r.detector) : undefined,
       flagged: !!r?.flagged,
+      saturated: !!r?.saturated,
+      lowerLimit: !!r?.lower_limit || !!r?.saturated,
+      maskedPx: Number.isFinite(Number(r?.masked_px)) ? Number(r.masked_px) : undefined,
     });
   }
   return out.sort((a, b) => a.wavelength_um - b.wavelength_um);
 }
 
-/** Flux (mJy) versus wavelength (micrometres) with error bars; flagged points are hollow. */
+/** Flux (mJy) versus wavelength (micrometres) with error bars; lower limits (saturated or masked pixels) are hollow. */
 export function spectrumChartLayout(points: SpectrumPoint[], box: Box = DEFAULT_BOX): ChartLayout {
   const xDomain: [number, number] = [0.7, 5.1];
   return build(
     [points.map((p) => p.wavelength_um)],
     [points.map((p) => p.flux_mjy)],
     [points.map((p) => p.err_mjy)],
-    [points.map((p) => !!p.flagged)],
-    [points.map((p) => `${num(p.wavelength_um, 3)} µm: ${sig(p.flux_mjy, 3)} ± ${sig(p.err_mjy, 2)} mJy${p.flagged ? ' ' + t('chart.flaggedPoint') : ''}`)],
+    [points.map((p) => !!p.lowerLimit)],
+    [points.map((p) => `${num(p.wavelength_um, 3)} µm: ${p.lowerLimit ? '≥ ' : ''}${sig(p.flux_mjy, 3)} ± ${sig(p.err_mjy, 2)} mJy${p.lowerLimit ? ' ' + t('sui.lowerLimitTag') : ''}${p.flagged ? ' ' + t('chart.flaggedPoint') : ''}`)],
     box, xDomain, (v) => num(v, 1), [1, 2, 3, 4, 5],
   );
 }

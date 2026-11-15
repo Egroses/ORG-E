@@ -1,10 +1,12 @@
 // Everything that makes a Realistic-mode view shareable lives in the address, so a copied link reopens the same picture.
 // Parameters (all optional): view=realistic band=D5 visit=2 ref=1 mode=blink|diff|stack stretch=linear|asinh|sqrt|log
-// lo=5 hi=99.5 (percent cuts) group=fine|normal|coarse layer=none|flags|heavy. `visit` and `ref` count from 1.
+// lo=5 hi=99.5 (percent cuts) group=fine|normal|coarse layer=none|flags|heavy ap=1|2|3 (spectrum aperture, pixels)
+// spec=binned|all (spectrum view). `visit` and `ref` count from 1.
 
 import type { BandId, CompareMode } from '../data/types';
 import { ALL_BANDS, type GroupId } from '../data/catalog';
 import type { StretchFn } from '../sky/render';
+import { APERTURES, DEFAULT_APERTURE, type Aperture, type SpectrumView } from '../data/spectrumApi';
 
 export type ViewMode = 'game' | 'realistic';
 export type QualityLayer = 'none' | 'flagshare' | 'heavy';
@@ -22,9 +24,13 @@ export interface RealisticState {
   hi: number;
   group: GroupId;
   quality: QualityLayer;
+  /** Spectrum aperture radius in detector pixels. */
+  aperture: Aperture;
+  /** Spectrum view: 102 channels or one point per exposure. */
+  spec: SpectrumView;
 }
 
-export const DEFAULT_REALISTIC: RealisticState = { mode: 'blink', stretch: 'asinh', lo: 5, hi: 99.5, group: 'normal', quality: 'none' };
+export const DEFAULT_REALISTIC: RealisticState = { mode: 'blink', stretch: 'asinh', lo: 5, hi: 99.5, group: 'normal', quality: 'none', aperture: DEFAULT_APERTURE, spec: 'binned' };
 
 const MODES: CompareMode[] = ['blink', 'diff', 'stack'];
 const STRETCHES: StretchFn[] = ['linear', 'asinh', 'sqrt', 'log'];
@@ -62,6 +68,8 @@ export function parseRealistic(params: URLSearchParams): RealisticState {
     lo, hi,
     group: pick(params.get('group'), GROUPS, DEFAULT_REALISTIC.group),
     quality: LAYERS[params.get('layer') ?? ''] ?? 'none',
+    aperture: APERTURES.find((a) => String(a) === params.get('ap')) ?? DEFAULT_APERTURE,
+    spec: params.get('spec') === 'all' ? 'all' : 'binned',
   };
 }
 
@@ -77,6 +85,8 @@ export function realisticPairs(s: RealisticState): [string, string][] {
   if (s.hi !== DEFAULT_REALISTIC.hi) out.push(['hi', String(s.hi)]);
   if (s.group !== DEFAULT_REALISTIC.group) out.push(['group', s.group]);
   if (s.quality !== 'none') out.push(['layer', LAYER_NAME[s.quality]]);
+  if (s.aperture !== DEFAULT_REALISTIC.aperture) out.push(['ap', String(s.aperture)]);
+  if (s.spec !== DEFAULT_REALISTIC.spec) out.push(['spec', s.spec]);
   return out;
 }
 

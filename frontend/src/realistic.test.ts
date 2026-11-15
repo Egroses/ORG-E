@@ -149,18 +149,20 @@ describe('charts', () => {
     expect(lay.markers.map((m) => m.hollow)).toEqual([false, true]);
     expect(lay.lines).toHaveLength(1);
   });
-  it('spectrum: fake response, flagged points hollow (never tried against the real backend)', async () => {
+  it('spectrum list: lower limits hollow, bad pixel only dims (flagged now means a hard bit)', async () => {
     const fake = [
-      { wavelength_um: 3.1, flux_mjy: 5, err_mjy: 0.5, flagged: true },
-      { wavelength_um: 1.2, flux_mjy: 2, err_mjy: 0.2, flagged: false },
+      { wavelength_um: 3.1, flux_mjy: 5, err_mjy: 0.5, flagged: true, saturated: true, lower_limit: true },
+      { wavelength_um: 1.2, flux_mjy: 2, err_mjy: 0.2, flagged: true, lower_limit: false },
       { wavelength_um: 'x', flux_mjy: 1 },
     ];
-    const pts = await fetchSpectrum(1, 2, '', (async () => ({ ok: true, json: async () => fake })) as unknown as typeof fetch);
-    expect(pts).toHaveLength(2);
-    expect(pts![0].wavelength_um).toBe(1.2);
-    const lay = spectrumChartLayout(pts!);
+    const r = await fetchSpectrum(1, 2, 'all', 2, '', (async () => ({ ok: true, json: async () => fake })) as unknown as typeof fetch);
+    expect(r.kind).toBe('all');
+    if (r.kind !== 'all') return;
+    expect(r.points).toHaveLength(2);
+    expect(r.points[0].wavelength_um).toBe(1.2);
+    const lay = spectrumChartLayout(r.points);
     expect(lay.markers.map((m) => m.hollow)).toEqual([false, true]);
-    expect(await fetchSpectrum(1, 2, '', (async () => ({ ok: false })) as unknown as typeof fetch)).toBeNull();
+    expect((await fetchSpectrum(1, 2, 'all', 2, '', (async () => ({ ok: false, status: 500 })) as unknown as typeof fetch)).kind).toBe('error');
     expect(adaptSpectrum('nope')).toEqual([]);
   });
   it('nice ticks', () => {
