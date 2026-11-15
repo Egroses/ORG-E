@@ -7,6 +7,11 @@ Ekibe gönderilecek özet doküman: https://claude.ai/artifact/Kisqc232fpfzyH9zk
 
 ## Arayüz (frontend)
 
+- [ ] **Canlı indirme artık AWS'ten (15 Kasım, `pipeline/s3.py`).** Önbellekte olmayan konumlarda kesitler IRSA'nın kesme servisi yerine görüntülerin AWS'teki açık kopyasından okunuyor; yalnızca hedefin çevresindeki satırlar (~1,8 MB/dosya). Ölçülen: dosya başına 0,53 sn (IRSA: 5,6 sn). Beklenen: oyun modu (3 dedektör) ~1,5 dk, gerçekçi mod (6 dedektör) ~3 dk; eskiden 15 ve 30 dk. Pikseller, bayraklar ve dalga boyu tablosu IRSA kesitleriyle birebir aynı (9 görüntüde karşılaştırıldı). S3 bir dosyayı veremezse o dosya IRSA'dan iner. Sözleşme aynı. `/api/health`'te `archive_source: "s3"`.
+  - **Sınır:** bir konumu hangi görüntülerin kapsadığını hâlâ IRSA'nın SIA servisi söylüyor (S3'te konum dizini yok). 15 Kasım öğleden sonra SIA 502 veriyordu; o sırada yeni konumlar açılamaz (beş hedef etkilenmez).
+  - Frontend'in 25 dk zaman aşımı artık rahat yetiyor.
+  - **Pipeline sahibine not:** `pipeline/s3.py` eklendi, `sync_unit`'e `source="s3"` seçeneği geldi; varsayılan `"irsa"`, ekip önbelleği ve `verify` değişmedi.
+
 - [ ] **`docs/backend-spectrum-catalog-tasks.md` uygulandı (15 Kasım).** Ayrıntı, gerçek örnek yanıtlar ve ölçümler: `backend/docs/spectrum-api.md` (kök `docs/`'a dokunmadım; istenirse oraya kopyalanabilir). Hepsi ekleme; tek anlam değişikliği `flagged`.
   - **`flagged` artık yalnızca sert bozuk bit** (NONFUNC, HOT, COLD, PERSIST, OUTLIER, STREAK, SNOWBALL, MISSING_DATA, PHANMISS). Doyma `saturated`, boş piksel `masked_px`, ikisinden biri `lower_limit`; tüm bitler `flag_names`'te. Barnard: 358 noktanın 40'ı `flagged` (eskiden 358). Arayüz içi boş çizimi `flagged` yerine `lower_limit`'e bağlamak isteyebilir.
   - **`TRANSIENT` biti** FITS başlığına göre "Transient detected during SUR": pozlama sırasında okumada sıçrama; cismin geçici ya da hareketli olduğu anlamına gelmiyor. Gösteriliyor, nokta atılmıyor.

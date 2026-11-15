@@ -23,6 +23,9 @@ PREBUILD_ON_START = os.environ.get("PREBUILD_ON_START", "0") == "1"
 # 1: positions not in the cache are downloaded from IRSA (2-5 min). 0: only cached positions
 # (the test targets) open; anything else answers archive_unavailable at once.
 LIVE_QUERIES = os.environ.get("LIVE_QUERIES", "1") == "1"
+# Where live downloads come from: "s3" reads the public AWS copy of the images (pipeline/s3.py,
+# ~10x faster, IRSA as fallback per file), "irsa" uses IRSA's cutout service only.
+ARCHIVE_SOURCE = os.environ.get("ARCHIVE_SOURCE", "s3")
 
 # Center epoch of the frames (decimal year); positions from /api/resolve use the same.
 CENTER_EPOCH = 2026.0
