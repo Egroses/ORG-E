@@ -53,6 +53,21 @@ records = get_cutouts(269.446271, 4.768197, 0.1, 6)
 Cutouts that are not cached yet are downloaded first (3 connections, retries on HTTP
 503/429). Positions other than the five targets are stored under `cache/custom/`.
 
+## Faster downloads from the AWS copy (`pipeline/s3.py`)
+
+`sync_unit(..., source="s3", workers=20)` reads each cutout from the public AWS copy of the images
+(`s3://nasa-irsa-spherex`, anonymous) instead of IRSA's cutout service: HTTP range requests fetch only the
+rows around the position (IMAGE, VARIANCE, ZODI as plain rows; FLAGS as RICE tiles of one row, decoded with
+astropy), about 1.8 MB per image instead of 65 MB. The stored file has the same layers and headers as an
+IRSA cutout (CRPIX shifted, WCS-WAVE unchanged); the box can differ from IRSA's by one pixel.
+
+- Checked on 15 Nov 2026: pixels, FLAGS bits, FLAGS header and WCS-WAVE identical to IRSA cutouts
+  (Barnard's Star D6, R Dra D1, Eps Indi B D5).
+- Measured: 0.53 s per image with 20 connections, against 5.6 s with IRSA's cutouts (3 connections).
+- A file S3 cannot give is fetched from IRSA, with at most 3 connections. The default stays `"irsa"`
+  (SPEC); the backend uses `"s3"` for positions not in the cache (`ARCHIVE_SOURCE`).
+- The list of images covering a position still comes from IRSA (SIA): the bucket has no position index.
+
 ## Archive collections
 
 Images come from `spherex_dr1`, `spherex_qr3` and their deep-field versions

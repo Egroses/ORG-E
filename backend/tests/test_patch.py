@@ -126,7 +126,8 @@ def test_live_query_downloads_every_missing_detector(fake, monkeypatch):
         listings.append((ra, dec))
         return [image(2, 0), image(2, 1), image(4, 0), image(6, 0)]
 
-    def sync_unit(directory, ra, dec, size, det, images, label, on_progress=None):
+    def sync_unit(directory, ra, dec, size, det, images, label, on_progress=None, source="irsa", workers=3):
+        assert source == config.ARCHIVE_SOURCE and workers == (20 if source == "s3" else 3)
         synced.append((det, [i.file for i in images]))
         for n, _ in enumerate(images, 1):
             on_progress(n, len(images), 0)

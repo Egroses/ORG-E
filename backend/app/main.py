@@ -70,7 +70,7 @@ app.include_router(patch.router)
 @app.get("/api/health")
 def health():
     cache = config.REPO_ROOT / "cache"
-    return {"status": "ok", "frontend": config.FRONTEND_DIST.is_dir(), "live_queries": config.LIVE_QUERIES,
+    return {"status": "ok", "frontend": config.FRONTEND_DIST.is_dir(), "live_queries": config.LIVE_QUERIES, "archive_source": config.ARCHIVE_SOURCE,
             # pipeline cache units (target x detector) on disk; 30 = all five test targets, six detectors each
             "cached_units": sum(1 for _ in cache.glob("*/D[1-6]/manifest.csv")),
             "frame_engine": jobs.frame_engine(), "patch": patch.imaging_available(),

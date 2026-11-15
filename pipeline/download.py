@@ -3,7 +3,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from . import archive, store
+from . import archive, s3, store
 from .config import CACHE, MAX_CONNECTIONS, SIZE_DEG, TARGETS, unit_dir
 
 
@@ -21,10 +21,14 @@ class ProgressLog:
             handle.write(f"{stamp} {text}\n")
 
 
-def sync_unit(directory, ra, dec, size_deg, detector, images, label, workers=MAX_CONNECTIONS, log=None, on_progress=None):
+def sync_unit(directory, ra, dec, size_deg, detector, images, label, workers=MAX_CONNECTIONS, log=None, on_progress=None,
+              source="irsa"):
     """Make directory hold every cutout of `images` (already filtered to one detector).
 
     Files already present are skipped, so an interrupted run resumes where it stopped.
+    source="irsa": IRSA's cutout service (SPEC). source="s3": the cutout is read from the public
+    AWS copy (pipeline/s3.py, ~10x faster, `workers` connections to S3); a file S3 cannot give is
+    fetched from IRSA instead, never with more than MAX_CONNECTIONS at a time.
     Returns a dict with the counts and the list of failed file names.
     """
     directory.mkdir(parents=True, exist_ok=True)
@@ -36,14 +40,27 @@ def sync_unit(directory, ra, dec, size_deg, detector, images, label, workers=MAX
     state = {"done": len(present), "failed": [], "errors": {}}
     lock = threading.Lock()
     session = archive.new_session()
+    s3_session = s3.new_session(workers) if source == "s3" else None
+    irsa_slots = threading.Semaphore(MAX_CONNECTIONS)
 
     def work(image):
         url = archive.cutout_url(image.access_url, ra, dec, size_deg)
         error = None
         try:
-            archive.fetch_cutout(session, url, directory / image.file)
+            if s3_session is not None:
+                try:
+                    s3.fetch_cutout(s3_session, image.access_url, ra, dec, size_deg, directory / image.file)
+                    return report(image, None)
+                except s3.S3Error as exc:
+                    if log is not None:
+                        log.line(f"{label} s3 failed for {image.file} ({exc}); trying IRSA")
+            with irsa_slots:
+                archive.fetch_cutout(session, url, directory / image.file)
         except archive.FetchError as exc:
             error = str(exc)
+        report(image, error)
+
+    def report(image, error):
         with lock:
             if error is None:
                 state["done"] += 1
@@ -70,7 +87,8 @@ def sync_unit(directory, ra, dec, size_deg, detector, images, label, workers=MAX
     elif failed_path.exists():
         failed_path.unlink()
     store.rebuild_manifest(
-        directory, ra, dec, size_deg, detector, {image.file: image for image in images}, archive.cutout_url
+        directory, ra, dec, size_deg, detector, {image.file: image for image in images},
+        archive.cutout_url if source == "irsa" else s3_source_url,
     )
     if log is not None:
         log.line(f"{label} finished total={total} failed={len(failed)}")
@@ -78,6 +96,11 @@ def sync_unit(directory, ra, dec, size_deg, detector, images, label, workers=MAX
         "total": total, "cached": len(present), "downloaded": len(todo) - len(failed),
         "failed": failed, "errors": state["errors"],
     }
+
+
+def s3_source_url(access_url, ra, dec, size_deg):
+    """source_url of a cutout read from S3: the file on S3 and the box (manifest column)."""
+    return f"{s3.s3_url(access_url)}#center={ra:.6f},{dec:.6f}&size={size_deg:g}"
 
 
 def download_units(units, who):

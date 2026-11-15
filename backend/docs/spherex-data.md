@@ -87,6 +87,14 @@ Append `?center=<ra>,<dec>d&size=<deg>` to an on-prem `access_url`. Returns a ME
 
 ### AWS S3 (anonymous) — fallback when IRSA is slow
 
+**Used since 15 Nov (`pipeline/s3.py`).** Layout of an L2 file on S3 (65 MB): PRIMARY (no data), IMAGE,
+VARIANCE, ZODI uncompressed 2040x2040 float32; FLAGS a RICE_1 tile-compressed BINTABLE with one tile per row
+(ZTILE1 = 2040, ZTILE2 = 1); EPSF table; WCS-WAVE 720-byte table. A 0.1 deg cutout reads ~60 rows of each
+layer plus the FLAGS tiles of those rows: ~1.8 MB. IRSA's cutout service changes only NAXIS1/2 and
+CRPIX1/2, CRPIX1A/2A, CRPIX1W/2W (shifted by the cut), decompresses FLAGS and drops EPSF. 0.53 s per image with
+20 connections from Turkey (cutout service: 5.6 s per image with 3). The bucket has no position index:
+which images cover a position still comes from IRSA SIA (down with HTTP 502 on 15 Nov afternoon).
+
 - Bucket `nasa-irsa-spherex`, region us-east-1, prefixes `dr1/`, `qr3/`, `qr2/` (verified listable anonymously on 2026-11-14). Same tree as `https://irsa.ipac.caltech.edu/ibe/data/spherex/`.
 - `aws s3 ls --no-sign-request s3://nasa-irsa-spherex/dr1/level2/`
 - `fits.open('s3://...', fsspec_kwargs={"anon": True})`; with `use_fsspec=True` + `.section[...]` only needed bytes are read.

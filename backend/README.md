@@ -123,7 +123,10 @@ patch in the background and keeps it as gzipped JSON in `data/patch/` (sent as i
 that accept gzip). A failed patch is reported for 60 s before a new request tries again.
 For a position not in the cache the archive is listed once and the missing detectors are
 downloaded one after the other (pipeline `sync_unit`, 3 connections, one patch build at a time;
-`progress` counts the files of all of them). Count on 2-5 minutes per detector; once downloaded,
+`progress` counts the files of all of them). The files are read from the public AWS copy of the images (`ARCHIVE_SOURCE=s3`, default; `pipeline/s3.py`,
+only the rows around the position, 20 connections, IRSA per file as fallback): about 0.5 s per file, so
+1.5 min for three detectors instead of 15 (`ARCHIVE_SOURCE=irsa`: IRSA's cutout service, 2-5 minutes per
+detector). Once downloaded,
 the position stays in `cache/custom/` and opens at once. With `PREBUILD_ON_START=1` the patches
 the frontend asks for on the five targets (`dets=2,4,6` and `1..6`) are built at start.
 
@@ -204,7 +207,7 @@ Libraries: FastAPI, Pydantic, Uvicorn, Astropy, Astroquery, NumPy, Pillow, Reque
 
 Space Apps asks teams to state where AI ("Super Intelligence") tools were used. Most of the
 backend code in this folder (API models, name resolving, job model, fallback frame maker,
-photometry and 102-channel spectrum, Gaia and CatWISE endpoints with stored fields, `/api/patch` service, data refresh command, tests and deploy files) was written with an AI coding assistant
+photometry and 102-channel spectrum, Gaia and CatWISE endpoints with stored fields, `/api/patch` service, data refresh command, AWS S3 cutout reader (`pipeline/s3.py`), tests and deploy files) was written with an AI coding assistant
 (Claude Code, Anthropic) under the direction of the backend owner, who reviewed it and checked it
 against real SPHEREx data (tests in `tests/`). The approach and design decisions are the team's
 (`docs/design-v2.md`).

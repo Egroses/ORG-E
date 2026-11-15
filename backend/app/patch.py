@@ -171,7 +171,8 @@ class PatchManager:
         """Fetch the detectors not in the cache from the archive, one after the other.
 
         The archive is listed once for the position (one SIA query for all detectors) and each
-        detector goes through the pipeline's sync_unit (3 connections). Files already on disk are
+        detector goes through the pipeline's sync_unit: from the AWS copy with config.ARCHIVE_SOURCE
+        "s3" (default, 20 connections, IRSA per file as fallback), else IRSA (3 connections). Files already on disk are
         kept, so a download cut by a restart continues where it stopped on the next request.
         Progress counts the files of every missing detector together (0 to total once) and adds
         `detector_done` / `detector_total` and `eta_s` (seconds left at the speed so far).
@@ -179,7 +180,8 @@ class PatchManager:
         missing = missing_detectors(params)
         if not missing:
             return
-        from pipeline import archive
+        from pipeline import archive, s3
+        from pipeline.config import MAX_CONNECTIONS
         from pipeline.download import sync_unit
 
         extra = {"detector_done": 0, "detector_total": len(missing)}
@@ -206,7 +208,8 @@ class PatchManager:
             def step(done, _total, failed, base=dict(before)):
                 report(base["done"] + done, base["failed"] + failed)
             result = sync_unit(unit_dir(params, det), params["ra"], params["dec"], size, det, per_det[det],
-                               f"patch D{det}", on_progress=step)
+                               f"patch D{det}", on_progress=step, source=config.ARCHIVE_SOURCE,
+                               workers=s3.CONNECTIONS if config.ARCHIVE_SOURCE == "s3" else MAX_CONNECTIONS)
             before["done"] += result["cached"] + result["downloaded"]
             before["failed"] += len(result["failed"])
             extra["detector_done"] += 1
