@@ -5,8 +5,9 @@ from typing import Literal, Optional, Union
 from fastapi import APIRouter, Query
 
 from .errors import ApiError
+from .catwise import MAX_RADIUS as CATWISE_MAX_RADIUS, catwise_sources
 from .gaia import gaia_sources
-from .models import ChannelSpectrum, GaiaSource, ResolveResponse, SkyPosition, SpectrumPoint, Target
+from .models import CatwiseSource, ChannelSpectrum, GaiaSource, ResolveResponse, SkyPosition, SpectrumPoint, Target
 from .photometry import APERTURE_PX, APERTURE_RANGE, channel_spectrum, photometry
 from .resolve import resolve as resolve_text
 from .targets import TARGETS
@@ -39,6 +40,14 @@ def gaia(ra: float, dec: float,
          limit: int = Query(500, description="at most this many sources, brightest first")):
     """Gaia DR3 sources, positions moved to epoch 2026.0 with their proper motion."""
     return gaia_sources(ra, dec, radius, gmag_max, limit)
+
+
+@router.get("/catwise", response_model=list[CatwiseSource])
+def catwise(ra: float, dec: float,
+            radius: float = Query(0.075, description=f"degrees, at most {CATWISE_MAX_RADIUS}"),
+            limit: int = Query(500, description="at most this many sources, brightest W2 first")):
+    """CatWISE2020 sources (WISE 3.4/4.6 micron, motions from ten years of WISE), moved to epoch 2026.0."""
+    return catwise_sources(ra, dec, radius, limit)
 
 
 def _check_aperture(aperture):

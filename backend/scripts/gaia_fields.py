@@ -4,7 +4,7 @@ Run from backend/ (one query per target; ESA first, the GAVO mirror if ESA does 
     python -m scripts.gaia_fields
     python -m scripts.gaia_fields --target barnard
 
-Every source brighter than G = 19 within 0.2 deg of the target, at Gaia's epoch 2016.0
+Every source brighter than G = 19 within 0.22 deg of the target, at Gaia's epoch 2016.0
 (the API moves them to 2026.0). The files are small and kept in git so the targets' catalogue
 works with no archive.
 """

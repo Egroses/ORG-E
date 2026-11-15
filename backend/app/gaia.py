@@ -25,11 +25,14 @@ SERVICES = [  # (name, TAP sync URL, table); tried in this order
     ("ESA", "https://gea.esac.esa.int/tap-server/tap/sync", "gaiadr3.gaia_source"),
     ("GAVO", "https://dc.zah.uni-heidelberg.de/tap/sync", "gaia.dr3lite"),
 ]
-COLUMNS = ["source_id", "ra", "dec", "phot_g_mean_mag", "pmra", "pmdec"]
+COLUMNS = ["source_id", "ra", "dec", "phot_g_mean_mag", "pmra", "pmdec", "pmra_error", "pmdec_error"]
 
 # Stored target fields: every source brighter than FIELD_GMAG within FIELD_RADIUS of the target.
 FIELDS_DIR = Path(__file__).parent / "gaia_fields"
-FIELD_RADIUS = 0.2   # deg; covers the frontend's largest request (0.25 deg field: radius 0.1875)
+FIELD_RADIUS = 0.22  # deg; the frontend's largest request (0.25 deg field: radius 0.1875) + MOTION_MARGIN
+# Catalogue positions are years old: a source is searched MOTION_MARGIN further out, moved to 2026.0,
+# and then cut to the requested circle, so fast movers (Barnard's Star ~10"/yr, WISE 0855 ~8"/yr) are kept.
+MOTION_MARGIN = 0.03  # deg, ~108 arcsec
 FIELD_GMAG = 19.0
 FIELD_LIMIT = 50000  # far above any field's count, so a stored field is complete
 
@@ -45,6 +48,13 @@ def propagate(ra, dec, pmra, pmdec, years):
     new_dec = dec + pmdec * years / 3.6e6
     new_ra = ra + pmra * years / 3.6e6 / max(math.cos(math.radians(dec)), 1e-6)
     return new_ra % 360, new_dec
+
+
+def pm_snr(pmra, pmdec, pmra_error, pmdec_error):
+    """Proper motion over its error, hypot(pmra/err, pmdec/err); None when anything is unknown or zero."""
+    if None in (pmra, pmdec, pmra_error, pmdec_error) or pmra_error <= 0 or pmdec_error <= 0:
+        return None
+    return round(math.hypot(pmra / pmra_error, pmdec / pmdec_error), 2)
 
 
 def separation_deg(ra1, dec1, ra2, dec2):
@@ -71,7 +81,7 @@ def query_services(ra, dec, radius, gmag_max, limit):
             error = requests.RequestException(f"{name}: {exc}")
             continue
         rows = tuple(csv.DictReader(io.StringIO(response.text)))
-        if rows and set(COLUMNS) - set(rows[0]):
+        if rows and set(COLUMNS[:6]) - set(rows[0]):  # the error columns are optional
             error = requests.RequestException(f"{name}: unexpected columns {sorted(rows[0])}")
             continue
         return rows
@@ -92,8 +102,8 @@ def _field_rows(key):
         return tuple(csv.DictReader(handle))
 
 
-def _from_fields(ra, dec, radius, gmag_max, limit):
-    """Rows from a stored target field that fully contains the request circle, else None."""
+def _from_fields(ra, dec, radius, gmag_max):
+    """Rows within `radius` (catalogue epoch) from a stored target field containing the circle, else None."""
     if gmag_max > FIELD_GMAG:
         return None
     for target in TARGETS:
@@ -102,12 +112,9 @@ def _from_fields(ra, dec, radius, gmag_max, limit):
         rows = _field_rows(target.key)
         if rows is None:
             continue
-        # A star near the edge is selected by its 2016 position, as the archive would do.
-        inside = [row for row in rows
-                  if float(row["phot_g_mean_mag"] or 99) < gmag_max
-                  and separation_deg(ra, dec, float(row["ra"]), float(row["dec"])) <= radius]
-        inside.sort(key=lambda row: float(row["phot_g_mean_mag"] or 99))
-        return inside[:limit]
+        return [row for row in rows
+                if float(row["phot_g_mean_mag"] or 99) < gmag_max
+                and separation_deg(ra, dec, float(row["ra"]), float(row["dec"])) <= radius]
     return None
 
 
@@ -117,17 +124,22 @@ def gaia_sources(ra, dec, radius=0.075, gmag_max=19.0, limit=500, epoch=config.C
     if not 0 < radius <= 0.5:
         raise ApiError("bad_input", "radius must be between 0 and 0.5 degrees.")
     limit = max(1, min(int(limit), 2000))
-    rows = _from_fields(ra, dec, radius, float(gmag_max), limit)
+    search = radius + MOTION_MARGIN
+    rows = _from_fields(ra, dec, search, float(gmag_max))
     if rows is None:
         try:
-            rows = _query(round(ra, 5), round(dec, 5), round(radius, 4), float(gmag_max), limit)
+            rows = _query(round(ra, 5), round(dec, 5), round(search, 4), float(gmag_max), 2000)
         except requests.RequestException as exc:
             raise ApiError("archive_unavailable", f"No Gaia archive answered: {exc}")
     sources = []
     for row in rows:
         pmra, pmdec = _float_or_none(row["pmra"]), _float_or_none(row["pmdec"])
         new_ra, new_dec = propagate(float(row["ra"]), float(row["dec"]), pmra, pmdec, epoch - GAIA_EPOCH)
+        if separation_deg(ra, dec, new_ra, new_dec) > radius:
+            continue
+        snr = pm_snr(pmra, pmdec, _float_or_none(row.get("pmra_error")), _float_or_none(row.get("pmdec_error")))
         sources.append(GaiaSource(
             source_id=row["source_id"], ra=round(new_ra, 7), dec=round(new_dec, 7),
-            gmag=_float_or_none(row["phot_g_mean_mag"]), pmra=pmra, pmdec=pmdec))
-    return sources
+            gmag=_float_or_none(row["phot_g_mean_mag"]), pmra=pmra, pmdec=pmdec, pm_snr=snr))
+    sources.sort(key=lambda source: 99 if source.gmag is None else source.gmag)
+    return sources[:limit]
