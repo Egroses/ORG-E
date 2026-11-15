@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   plugins: [react()],
   server: {
-    // Same-origin calls to the data service during development (python -m imaging.dev_server --port 8000).
+    // Same-origin calls to the data service during development (the real backend: uvicorn app.main:app --port 8000).
     proxy: { '/api': 'http://localhost:8000' },
   },
   test: { include: ['src/**/*.test.ts'] },

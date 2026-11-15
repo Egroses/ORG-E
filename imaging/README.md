@@ -74,7 +74,9 @@ python -m venv .venv && .venv\Scripts\python -m pip install numpy astropy pillow
 .venv\Scripts\python -m imaging.dev_server --cache E:\nasa\ORG-E\cache --port 8000 --prebuild
 ```
 
-Real-data tests are skipped when the cache is missing. The dev server (standard library only) serves
+Real-data tests are skipped when the cache is missing. To run the app, use the real backend instead
+(`cd backend && uvicorn app.main:app --port 8000`, cache setup in `docs/backend-patch-tasks.md`). `imaging/dev_server.py` is a
+**contract reference server for tests only**, not a way to run the frontend. It (standard library only) serves
 `GET /api/patch` and `GET /api/health`: 202 while building, 200 when done or failed, CORS `*`, in-memory
 results, gzip when requested. It only knows the five cached targets (position within 0.001 deg) and is the reference for the
 backend's route.

@@ -98,9 +98,9 @@ Sky Quest now combines its game flow with the measurement tools and design appro
   polls on HTTP 202 every 2 s (gives up after about 3 minutes with a friendly message) and converts to `SkyPatch`
   (noise reference = median of all frame noises, masked NaN pixels become 0 and flagged, flag_share >= 51 means flagged).
   A band with no exposure in a visit becomes an all-zero, all-flagged frame and shows "No photo" in the observation map.
-- **Provider switch** (`src/data/provider.ts`): at startup calls `{VITE_API_BASE}/api/health`. If it answers, real data is used;
-  otherwise the realistic mock stays and the "Demo data" chip shows. `?data=mock` forces the mock. If a practice case fails on the
-  real service, it falls back to the mock for that case.
+- **Data source order** (`src/data/provider.ts`): live backend (`{VITE_API_BASE}/api/patch`) -> saved real copy shipped with the app
+  (`public/static`, "saved copy" notice) -> a plain-language error. Demo data is never a fallback; the only way to get it is the
+  developer switch `?data=mock`, which shows a full-width red banner ("DEMO DATA ... not real SPHEREx images") on every screen.
 - **Measure it** (`src/sky/measure.ts`), **catalogue check** (`catalogue.ts`, `src/data/gaiaApi.ts`), **changes in the field** (`changes.ts`).
 - **Observation map** (bands x visits matrix), Measure and Changes tabs, discovery notebook with CSV export (Field report),
   glossary ("Words"), tour ("Tour", opens once, remembered), three-zone layout and a bottom sheet at 820 px and below (tap the handle to cycle three heights).
@@ -108,13 +108,14 @@ Sky Quest now combines its game flow with the measurement tools and design appro
 ## Run against real data
 
 ```
-# terminal 1: the data service (backend or imaging dev server) on port 8000
-python -m imaging.dev_server --cache <cache dir> --port 8000
+# terminal 1: the real backend on port 8000 (cache setup: docs/backend-patch-tasks.md)
+cd backend && uvicorn app.main:app --port 8000
 # terminal 2
-npm run dev        # /api is proxied to http://localhost:8000
+cd frontend && npm run dev        # /api is proxied to http://localhost:8000
 ```
-Without a service: `node scripts/fakeServer.mjs` starts a synthetic stand-in that speaks the same contract (not real SPHEREx data).
-For a deployed service set `VITE_API_BASE`.
+For a deployed service set `VITE_API_BASE`. If the service is down, the app opens the saved copies of the five practice targets
+(`public/static`, made by `node scripts/export-static.mjs --api http://localhost:8000`); a view with no saved copy shows an error,
+never made-up data. `imaging/dev_server.py` is a contract reference server for tests only; do not use it to run the app.
 
 ## Tests
 
@@ -126,12 +127,11 @@ catalogue propagation and verdicts, changes detector. `npm run build`, `npm run 
 - Dark theme only; no light theme yet. Share link works; `&embed=1` and the spectrum chart are not built.
 - Measuring and the changes detector are approximate (saturated stars, crowded fields, faint dots); the interface says so.
 - Game tolerances are in native 6.15 arcsec pixels; real patches use a 3.075 arcsec grid and the answer key rescales for it.
-- Not tested against the real imaging dev server (it did not exist yet); tested against `scripts/fakeServer.mjs`.
 - The bottom sheet is tap-to-cycle, not draggable.
 
 ## What we learned running it on real SPHEREx data
 
-Checked on 14 Nov 2026 with `python -m imaging.dev_server` and the five cached targets (the numbers below are measurements):
+Checked on 14 Nov 2026 with the contract reference server (`imaging/dev_server.py`) and the five cached targets (the numbers below are measurements):
 
 - **Visits (photos).** The practice cases ask the backend for `gap_days=30, max_span_days=60` (R Draconis: `60 / 150`), which gives
   three visits with all three bands for Barnard's Star, WISE 0855 and RW Aurigae. The server defaults (10 / 30) give 7 to 16 visits
@@ -172,7 +172,7 @@ grouping, exposures per collection, noise in MJy/sr, flagged and no-data shares)
 
 What it does not show: no zodiacal-light layer, no 102-channel spectrum, no model fits (ratios are plain flux ratios). Photometry errors assume
 independent pixels, which the resampled grid is not, so they are underestimates. Cutouts are 0.1 degree wide: larger fields have no-data edges.
-The spectrum chart was tested only with a fake response, never against the real backend. Non-cached positions are not served by the imaging dev server.
+The spectrum chart was tested only with a fake response, never against the real backend. Non-cached positions are only served by the real backend with live queries on.
 
 **No-data pixels** (masked / NaN in the archive) are painted as hatched mid-grey in both modes, with a legend entry in Realistic mode.
 
