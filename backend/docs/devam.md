@@ -37,7 +37,9 @@ npm run dev                      # http://localhost:5173
 
 Frontend `/api` isteklerini 8000'deki backend'e yönlendirir; backend kapalıysa demo veriye düşer.
 
-**Testler** (`backend` klasöründe): `python -m pytest -q` → 69 passed, 2 skipped.
+**Testler** (`backend` klasöründe): `python -m pytest -q` → 71 passed, 2 skipped.
+
+**Yeni veriyle yenileme:** `python -m scripts.refresh --check` (rapor), `python -m scripts.refresh` (indir + yeniden üret).
 
 ## Bu makinede kurulu olanlar
 
@@ -71,8 +73,8 @@ Claude dokümanları:
 
 ## Açık işler (öncelik sırasıyla öneri)
 
-1. **Yeni veriyle yenileme komutu.** İş kimliğine veri sürümü girmiyor; yeni SPHEREx verisi gelince önbellekteki
-   hedefler yenilenmiyor. Yarışmanın ilk artı puan maddesi.
+1. ~~Yeni veriyle yenileme komutu~~ **yapıldı (15 Kasım):** `python -m scripts.refresh` (`--check` yalnızca rapor).
+   Sonuçlar manifest damgası saklıyor, önbellek değişince aynı kimlikle yeniden üretiliyor. Testler 71 passed.
 2. **`mock-error` farkı.** Mock HTTP 404 dönüyor, gerçek başarısız iş 200 + `status: "failed"`. Frontend sahibinin
    onayıyla mock'u gerçeğe uydur (yeni frontend `/api/jobs` kullanmıyor, aciliyeti düşük).
 3. **Epsilon Indi B kısa dönemler.** Varsayılan 10/30 ayarında 1 ve 3 görüntülük dönemler çıkıyor. Arayüz 30/60

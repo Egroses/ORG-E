@@ -179,3 +179,13 @@ def test_failure_is_reported_then_retried_later(fake, monkeypatch):
     assert client.get("/api/patch", params=params).json()["status"] == "failed"  # not restarted at once
     monkeypatch.setattr(patch, "RETRY_AFTER_S", -1)
     assert client.get("/api/patch", params=params).status_code == 202  # tried again later
+
+
+def test_new_data_rebuilds_a_stored_patch(fake):
+    params = {"ra": 10, "dec": 10, "dets": "6"}
+    assert poll(params).json()["status"] == "done" and len(fake.calls) == 1
+    assert poll(params).json()["status"] == "done" and len(fake.calls) == 1  # unchanged: from disk
+    with open(fake.cache / "D6" / "manifest.csv", "a", encoding="utf-8") as handle:
+        handle.write("b.fits,61100.0,6,4.6,qr3,1,y\n")  # the pipeline added an image
+    assert client.get("/api/patch", params=params).status_code == 202
+    assert poll(params).json()["status"] == "done" and len(fake.calls) == 2

@@ -89,3 +89,34 @@ def test_barnard_end_to_end(tmp_path):
     # a second manager (restart) answers from disk without running anything
     again = JobManager(tmp_path, 1).submit(JobRequest(ra=BARNARD.ra, dec=BARNARD.dec))
     assert again.status == "done" and again.id == job.id
+
+
+def test_new_data_rebuilds_a_finished_job(tmp_path, monkeypatch):
+    unit = tmp_path / "cache" / "D6"
+    unit.mkdir(parents=True)
+    manifest = unit / "manifest.csv"
+    manifest.write_text("file\na.fits\n", encoding="utf-8")
+    record = {"path": "a.fits", "mjd": 61000.0, "detector": 6, "wavelength_um": 4.5,
+              "collection": "qr3", "version": "1", "obs_id": "x"}
+    builds = []
+
+    def build(records, *args):
+        builds.append(len(records))
+        frame = {"n": 0, "t_start": "2026-01-01", "t_end": "2026-01-02", "detector": 6,
+                 "wavelength_um": [4.4, 4.6], "n_images": len(records), "flagged_fraction": 0.0}
+        return {"frames": [frame], "grid": {"ra": 1, "dec": 2, "scale_arcsec": 6.15, "width": 3, "height": 3},
+                "display_range": {"min": 0, "max": 1, "stretch": "asinh"}, "n_unreadable": 0}, "imaging"
+
+    monkeypatch.setattr(jobs, "cutout_dir", lambda req: unit)
+    monkeypatch.setattr(jobs, "find_cutouts", lambda req, cb, live: ([record] * len(manifest.read_text().split()[1:]), 0))
+    monkeypatch.setattr(jobs, "build_frames", build)
+    monkeypatch.setattr(jobs, "frame_engine", lambda: "imaging")
+    manager = JobManager(tmp_path / "jobs", 1, live=False)
+    req = JobRequest(ra=1, dec=2)
+
+    assert wait(manager, manager.submit(req).id).status == "done"
+    assert wait(manager, manager.submit(req).id).status == "done" and builds == [1]  # unchanged: not rebuilt
+    manifest.write_text("file\na.fits\nb.fits\n", encoding="utf-8")  # the pipeline added an image
+    restarted = JobManager(tmp_path / "jobs", 1, live=False)
+    assert restarted.submit(req).status in ("queued", "running")
+    assert wait(restarted, job_id_for(normalize(req))).frames[0].n_images == 2 and builds == [1, 2]

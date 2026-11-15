@@ -76,6 +76,8 @@ Ekibe gönderilecek özet doküman: https://claude.ai/artifact/Kisqc232fpfzyH9zk
 - [ ] **Kök dosyalar (`README.md`, `.gitignore`, `LICENSE`):** kimin sorumluluğunda olduğu netleşmeli. Backend yalnızca `backend/` klasörüne yazıyor.
 
 - [ ] **Tasarımdan sapma: iş kimliğine veri sürümü girmiyor.** v2 tasarımı kimliğe `data_release` eklenmesini istiyordu. Ama sürüm ancak arşive sorulunca belli oluyor; kimliğe girerse önbellekteki hedefler her hafta yeniden üretilmek zorunda kalır, jüri haftalar sonra bakarsa yavaş açılır. Bunun yerine kimlik yalnızca istek parametrelerinden üretiliyor, kullanılan sürüm yanıtta `data_release` alanında gösteriliyor. Yeni veriyle yenileme ayrı bir komutla yapılacak (henüz yazılmadı).
+  - **15 Kasım: yazıldı.** `python -m scripts.refresh` (`--check` yalnızca rapor verir). Her hedef için arşivi bir kez sorgular, yalnızca eksik görüntüleri indirir (pipeline `sync_unit`, 3 bağlantı). Biten her iş ve yama, üretildiği `manifest.csv`'lerin damgasını saklar; önbellek değişince aynı kimlikle yeniden üretilir (komutla ya da çalışan sunucuda bir sonraki istekte). **Sözleşme değişmedi**: kimlikler ve yanıt alanları aynı. Güncellemeden sonraki ilk açılışta eski sonuçlar damgasız olduğu için bir kez yeniden üretilir. 15 Kasım kontrolü: arşivde önbellekte olmayan görüntü yok (30 birim güncel).
+  - Pipeline'a not: yeni bir koleksiyon (ör. DR2) çıkarsa adı `pipeline/config.py` içindeki `COLLECTIONS` listesine eklenmeli; yenileme komutu o listeyi kullanır.
 - [ ] **Ana SIMBAD sunucusu** (`simbad.cds.unistra.fr`) 14 Kasım'da hâlâ 404 veriyor; Harvard yansısı çalışıyor. İsim çözme gerekiyorsa backend'in `/api/resolve` uç noktasını kullanın.
 
 ## Açık kararlar

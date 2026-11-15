@@ -102,6 +102,20 @@ def find_cutouts(req: JobRequest, on_progress, live: bool = True):
     return records, failed
 
 
+def data_stamp(directories) -> str:
+    """Fingerprint of the cutout lists in these cache folders (their manifest.csv files).
+
+    Stored next to every finished result: when the pipeline adds new images to a folder the
+    stamp changes and the result is rebuilt on the next request (scripts/refresh.py).
+    """
+    digest = hashlib.sha1()
+    for directory in directories:
+        manifest = Path(directory) / "manifest.csv"
+        digest.update(manifest.read_bytes() if manifest.exists() else b"-")
+        digest.update(b"\0")
+    return digest.hexdigest()[:12]
+
+
 def data_release(records) -> str:
     collections = "+".join(sorted({r["collection"] for r in records}))
     return f"{collections}@{mjd_to_date(max(r['mjd'] for r in records))}"
@@ -153,18 +167,26 @@ class JobManager:
             if job.status == "done" and engine == frame_engine():
                 self.jobs[job.id] = job  # built by another frame maker: rebuilt on the next request
 
+    def _is_current(self, job: Job, req: JobRequest) -> bool:
+        """False for a finished job whose cutouts changed since it was built (new data)."""
+        if job.status != "done":
+            return True
+        stamp_file = self.jobs_dir / job.id / "data.txt"
+        stored = stamp_file.read_text(encoding="utf-8").strip() if stamp_file.exists() else None
+        return stored == data_stamp([cutout_dir(req)])
+
     def submit(self, request: JobRequest) -> Job:
         req = normalize(request)
         job_id = job_id_for(req)
         with self.lock:
             job = self.jobs.get(job_id)
-            if job is not None and job.status != "failed":
-                return job.model_copy(deep=True)
+        if job is not None and job.status != "failed" and self._is_current(job, req):
+            return job.model_copy(deep=True)
         if not self.live and not is_cached(req):
             raise ApiError("archive_unavailable", LIVE_OFF_MESSAGE)
         with self.lock:
             job = self.jobs.get(job_id)  # another request may have started it meanwhile
-            if job is not None and job.status != "failed":
+            if job is not None and job.status in ("queued", "running"):
                 return job.model_copy(deep=True)
             job = Job(id=job_id, status="queued", progress=Progress(total=0, done=0, failed=0),
                       center=SkyPosition(ra=req.ra, dec=req.dec))
@@ -205,6 +227,7 @@ class JobManager:
             return self._fail(job_id, "archive_unavailable", f"The SPHEREx archive did not answer: {exc}")
         if not records:
             return self._fail(job_id, "no_coverage", "SPHEREx has no images of this position in this detector yet.")
+        stamp = data_stamp([cutout_dir(req)])  # of the manifest the records came from
 
         total = len(records) + failed
         self._update(job_id, progress=Progress(total=total, done=len(records), failed=failed),
@@ -219,6 +242,8 @@ class JobManager:
         if not result["frames"]:
             return self._fail(job_id, "no_coverage", "No usable SPHEREx images at this position.")
 
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "data.txt").write_text(stamp, encoding="utf-8")  # before "done", which readers check
         frames = [Frame(url=f"/api/frames/{job_id}/{f['n']}.png", **f) for f in result["frames"]]
         self._update(
             job_id, status="done", grid=Grid(**result["grid"]),

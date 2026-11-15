@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse, Response
 
 from . import config
 from .errors import ApiError
-from .jobs import LIVE_OFF_MESSAGE, _records_from_manifest
+from .jobs import LIVE_OFF_MESSAGE, _records_from_manifest, data_stamp
 from .targets import TARGETS
 
 log = logging.getLogger("backend.patch")
@@ -112,14 +112,32 @@ class PatchManager:
     def result_path(self, job_id) -> Path:
         return self.out_dir / f"{job_id}.json.gz"
 
+    def stamp_path(self, job_id) -> Path:
+        return self.out_dir / f"{job_id}.data"
+
+    def is_current(self, job_id, params) -> bool:
+        """True when the stored patch exists and was built from the cutouts now in the cache."""
+        if not self.result_path(job_id).exists() or not self.stamp_path(job_id).exists():
+            return False
+        stored = self.stamp_path(job_id).read_text(encoding="utf-8").strip()
+        return stored == data_stamp(unit_dir(params, d) for d in params["dets"])
+
+    @staticmethod
+    def _busy(state) -> bool:
+        return state is not None and (state["status"] in ("queued", "running")
+                                      or (state["status"] == "failed" and not PatchManager._may_retry(state)))
+
     def request(self, params) -> dict:
-        """State of the patch for these parameters, starting its build if needed."""
+        """State of the patch for these parameters, starting its build if needed.
+
+        A stored patch whose cutouts changed since it was built (new data) is rebuilt.
+        """
         job_id = patch_id(params)
         with self.lock:
             state = self.jobs.get(job_id)
-            if state is not None and not self._may_retry(state):
+            if self._busy(state):
                 return {"id": job_id, **state}
-        if self.result_path(job_id).exists():
+        if self.is_current(job_id, params):
             return {"id": job_id, "status": "done"}
         if not imaging_available():
             return {"id": job_id, "status": "failed", "error": {"code": "internal_error", "message": _NO_IMAGING}}
@@ -132,7 +150,7 @@ class PatchManager:
                                         "(about 4-5 minutes per detector). Ask for one detector at a time.")
         with self.lock:
             state = self.jobs.get(job_id)  # another request may have started it meanwhile
-            if state is not None and not self._may_retry(state):
+            if self._busy(state):
                 return {"id": job_id, **state}
             self.jobs[job_id] = {"status": "queued", "progress": {"total": 0, "done": 0, "failed": 0}}
             snapshot = {"id": job_id, **self.jobs[job_id]}
@@ -166,6 +184,7 @@ class PatchManager:
                     size = CUTOUT_DEG if params["target"] else params["fov"]
                     get_cutouts(params["ra"], params["dec"], size, det, on_progress=progress)
                 records[det] = _records_from_manifest(directory)
+            stamp = data_stamp(unit_dir(params, d) for d in params["dets"])
         except Exception as exc:  # archive errors come in many types (HTTP, DAL, timeouts)
             log.exception("cutout search failed for patch %s", job_id)
             return self._fail(job_id, "archive_unavailable", f"The SPHEREx archive did not answer: {exc}")
@@ -191,6 +210,7 @@ class PatchManager:
         tmp = self.result_path(job_id).with_suffix(".tmp")
         tmp.write_bytes(gzip.compress(body, 6))
         tmp.replace(self.result_path(job_id))  # never serve a half-written file
+        self.stamp_path(job_id).write_text(stamp, encoding="utf-8")
         self._set(job_id, status="done")
         log.info("patch %s done: %d epochs, %d bytes", job_id, len(payload["epochs"]), len(body))
 

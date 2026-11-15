@@ -75,6 +75,23 @@ any other position answers `archive_unavailable` at once. Default `1` (positions
 cache are downloaded, 2-5 min). `GET /api/health` reports the setting as `live_queries`.
 The public demo runs with `LIVE_QUERIES=0` (`render.yaml`, team decision 14 Nov).
 
+## Refreshing with new SPHEREx data
+
+SPHEREx publishes new images every week (Quick Release). To bring the five test targets up to date:
+
+```bash
+python -m scripts.refresh --check     # what the archive has that the cache lacks (one query per target)
+python -m scripts.refresh             # download only the new images, then rebuild frames and patches
+python -m scripts.refresh --target barnard --detector 6 --no-build
+```
+
+Downloads go through the pipeline (`sync_unit`, 3 connections) into the existing cache folders;
+files already there are never fetched again. Every finished frame job (`data.txt`) and patch
+(`<id>.data`) stores a stamp of the `manifest.csv` files it was built from. When the stamp no
+longer matches the cache, the result is rebuilt, by `scripts.refresh` or by the running server on
+the next request, under the same id. The answer's `data_release` shows the newest data used.
+A new archive collection (e.g. a DR2) also needs its name in `pipeline/config.py`.
+
 ## Endpoints
 
 | Endpoint | Purpose |
@@ -158,7 +175,7 @@ Libraries: FastAPI, Pydantic, Uvicorn, Astropy, Astroquery, NumPy, Pillow, Reque
 
 Space Apps asks teams to state where AI ("Super Intelligence") tools were used. Most of the
 backend code in this folder (API models, name resolving, job model, fallback frame maker,
-photometry, Gaia endpoint, `/api/patch` service, tests and deploy files) was written with an AI coding assistant
+photometry, Gaia endpoint, `/api/patch` service, data refresh command, tests and deploy files) was written with an AI coding assistant
 (Claude Code, Anthropic) under the direction of the backend owner, who reviewed it and checked it
 against real SPHEREx data (tests in `tests/`). The approach and design decisions are the team's
 (`docs/design-v2.md`).
