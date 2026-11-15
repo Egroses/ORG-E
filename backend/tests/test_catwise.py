@@ -54,7 +54,7 @@ def test_falls_back_to_data_lab_when_irsa_fails(monkeypatch):
 
 
 def test_box_handles_ra_wrap():
-    assert "(ra >= 359.95" in catwise_module._box(0.01, 0, 0.05)
+    assert "(ra >= 359.94" in catwise_module._box(0.01, 0, 0.05)  # 0.01 - (0.05 + margin) + 360
     assert "OR ra <=" in catwise_module._box(359.99, 0, 0.05)
 
 
