@@ -75,3 +75,13 @@ def test_archive_down(monkeypatch):
 def test_gaia_live():
     rows = gaia_module.query_services(BARNARD.ra, BARNARD.dec, 0.05, 19, 5)
     assert len(rows) == 5 and rows[0]["source_id"] == BARNARD_ID
+
+
+def test_pm_snr(monkeypatch):
+    monkeypatch.setattr(gaia_module, "_query", archive_down)
+    star = client.get("/api/gaia", params={"ra": BARNARD.ra, "dec": BARNARD.dec}).json()[0]
+    assert star["source_id"] == BARNARD_ID and star["pm_snr"] > 1e5  # ~10 arcsec/yr, error ~0.03 mas/yr
+    assert gaia_module.pm_snr(3.0, 4.0, 1.0, 1.0) == 5.0
+    assert gaia_module.pm_snr(3.0, None, 1.0, 1.0) is None and gaia_module.pm_snr(3.0, 4.0, 0.0, 1.0) is None
+    monkeypatch.setattr(gaia_module, "_query", lambda *args: (NO_PM_ROW,))  # an older file without error columns
+    assert client.get("/api/gaia", params={"ra": 10, "dec": 10}).json()[0]["pm_snr"] is None

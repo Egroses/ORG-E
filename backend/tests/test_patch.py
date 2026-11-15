@@ -147,6 +147,9 @@ def test_live_query_downloads_every_missing_detector(fake, monkeypatch):
     assert synced == [(2, ["2_0.fits", "2_1.fits"]), (4, ["4_0.fits"])]  # only the missing ones, D6 is cached
     counts = [(p["done"], p["total"]) for p in seen if p and p["total"] == 3]
     assert counts[-1] == (3, 3) and [d for d, _ in counts] == sorted(d for d, _ in counts)  # one run 0 -> 3
+    downloads = [p for p in seen if p and "detector_total" in p]
+    assert downloads[0]["detector_done"] == 0 and downloads[-1]["detector_done"] == 2
+    assert {p["detector_total"] for p in downloads} == {2} and all("eta_s" in p for p in downloads[1:])
     assert fake.calls == [[2, 4, 6]]
 
 

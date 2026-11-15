@@ -102,9 +102,10 @@ A new archive collection (e.g. a DR2) also needs its name in `pipeline/config.py
 | `GET /api/jobs/{id}` | Job status and frames ready so far |
 | `GET /api/frames/{id}/{n}.png` | One frame |
 | `GET /api/diff?job=&a=&b=` | Difference image (later minus earlier) |
-| `GET /api/spectrum?ra=&dec=` | Spectrum points |
-| `GET /api/lightcurve?ra=&dec=&detector=` | Brightness over time |
-| `GET /api/gaia?ra=&dec=&radius=` | Gaia DR3 sources in the field |
+| `GET /api/spectrum?ra=&dec=&aperture=&mode=` | Spectrum points; `mode=102`: 102 channels (`docs/spectrum-api.md`) |
+| `GET /api/lightcurve?ra=&dec=&detector=&aperture=` | Brightness over time |
+| `GET /api/gaia?ra=&dec=&radius=` | Gaia DR3 sources in the field (with `pm_snr`) |
+| `GET /api/catwise?ra=&dec=&radius=` | CatWISE2020 sources (W1, W2, motion, `pm_snr`) |
 | `GET /api/patch?ra=&dec=&fov=&dets=&gap_days=&max_span_days=` | Float32 epoch stacks per detector for the game (contract: `../docs/patch-api.md`); 202 while building, 200 when done |
 
 Mock job ids for frontend states: `mock` (done, 3 frames), `mock-running` (1 frame),
@@ -149,12 +150,15 @@ pixel map (`nasa-irsa-spherex/dr1/solid_angle_pixel_map/`) would make the fluxes
 Aperture losses are not corrected, so fluxes of point sources are underestimated by a constant
 factor per detector; spectra shapes and light curves are unaffected.
 
-## Gaia fields
+## Gaia and CatWISE fields
 
 `/api/gaia` answers the five test targets from `app/gaia_fields/<target>.csv` (every Gaia DR3
-source with G < 19 within 0.2 deg, epoch 2016.0, ~570 kB in all), so their catalogue works with
+source with G < 19 within 0.22 deg, epoch 2016.0, ~850 kB in all), so their catalogue works with
 no archive. Other positions, larger radii or fainter limits are queried live: ESA first, then the
-GAVO mirror. Refresh the files with `python -m scripts.gaia_fields`.
+GAVO mirror. Refresh the files with `python -m scripts.gaia_fields`. `/api/catwise` works the same way
+(`app/catwise_fields/`, `python -m scripts.catwise_fields`; IRSA, then NOIRLab Data Lab). Both search
+0.03 deg beyond the radius, move sources to 2026.0 and then cut, so fast movers are not missed.
+Details and examples: `docs/spectrum-api.md`.
 
 ## Data and acknowledgements
 
@@ -165,6 +169,9 @@ GAVO mirror. Refresh the files with `python -m scripts.gaia_fields`.
   mirror (Heidelberg, `gaia.dr3lite`) when ESA does not answer. The stored fields of the five
   targets (`app/gaia_fields/`) were taken from GAVO on 15 Nov 2026, when the ESA archive was down.
 - **SIMBAD** for name resolving (`/api/resolve`), via the Harvard mirror and CDS.
+- **CatWISE2020** (`/api/catwise`; Marocco et al. 2021, ApJS 253, 8) from IRSA, or from NOIRLab Astro Data Lab
+  when IRSA does not answer. The stored fields of the five targets (`app/catwise_fields/`) came from Data Lab on
+  15 Nov 2026.
 
 "This publication makes use of data products from the Spectro-Photometer for the History of the
 Universe, Epoch of Reionization and Ices Explorer (SPHEREx), which is a joint project of the Jet
@@ -181,6 +188,13 @@ Technology."
 provided by national institutions, in particular the institutions participating in the Gaia
 Multilateral Agreement."
 
+"This publication makes use of data products from the Wide-field Infrared Survey Explorer, which is a joint
+project of the University of California, Los Angeles, and the Jet Propulsion Laboratory/California Institute of
+Technology, funded by the National Aeronautics and Space Administration", and from NEOWISE (JPL/Caltech, NASA).
+
+"This research uses services or data provided by the Astro Data Lab, which is part of the Community Science and
+Data Center (CSDC) Program of NSF NOIRLab."
+
 "This research has made use of the SIMBAD database, operated at CDS, Strasbourg, France"
 (Wenger et al. 2000, A&AS 143, 9).
 
@@ -190,7 +204,7 @@ Libraries: FastAPI, Pydantic, Uvicorn, Astropy, Astroquery, NumPy, Pillow, Reque
 
 Space Apps asks teams to state where AI ("Super Intelligence") tools were used. Most of the
 backend code in this folder (API models, name resolving, job model, fallback frame maker,
-photometry, Gaia endpoint and stored fields, `/api/patch` service, data refresh command, tests and deploy files) was written with an AI coding assistant
+photometry and 102-channel spectrum, Gaia and CatWISE endpoints with stored fields, `/api/patch` service, data refresh command, tests and deploy files) was written with an AI coding assistant
 (Claude Code, Anthropic) under the direction of the backend owner, who reviewed it and checked it
 against real SPHEREx data (tests in `tests/`). The approach and design decisions are the team's
 (`docs/design-v2.md`).
