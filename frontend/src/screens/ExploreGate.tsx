@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { LiveProgress, LoadStep } from '../data/types';
 import { LiveWait } from '../components/LiveWait';
+import { FovInput } from '../components/FovInput';
 import { FOV_OPTIONS, KNOWN } from '../data/catalog';
 import { R } from '../ui/realisticText';
 import { num } from '../i18n';
@@ -88,7 +89,10 @@ export function ExploreGate({ initialText = '', initialFov = 0.1, loading, live,
             </button>
           ))}
         </div>
-        <p className="t-caption c-3">{t('gate.bigger')}</p>
+        <div className="row wrap">
+          <FovInput valueDeg={fov} onChange={setFov} />
+          <p className="t-caption c-3">{t('gate.bigger')}</p>
+        </div>
         {realistic && (
           <>
             <p className="t-caption c-3">{R.gateHelp}</p>

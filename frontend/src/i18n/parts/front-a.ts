@@ -24,6 +24,11 @@ export const en = {
   'embed.noPosition': 'This embedded page needs a position (ra and dec) in its address.',
   'share.copyEmbed': 'Copy embed code',
   'share.embedCopied': 'Embed code copied',
+  // ---- field size ----
+  'fov.custom': 'Field size in arcminutes (3 to 15)',
+  'fov.err.nan': 'Type a number of arcminutes between {min} and {max}.',
+  'fov.err.range': 'The field can be {min}′ to {max}′ wide. Using {v}′.',
+  'fov.hint': 'The saved images of this target cover about 6′ across, so the outer part of this {v}′ field is empty. A position that is not saved is downloaded for the field you ask for.',
   // ---- old wording that was no longer true ----
   'gate.wait': 'Saved positions open in a moment. Any other position is downloaded from the SPHEREx archive, which can take 15 minutes or more.',
   'gate.cached': 'Saved targets',
@@ -45,6 +50,10 @@ export const tr: Record<keyof typeof en, string> = {
   'embed.noPosition': 'Bu gömülü sayfanın adresinde bir konum (ra ve dec) olmalı.',
   'share.copyEmbed': 'Gömme kodunu kopyala',
   'share.embedCopied': 'Gömme kodu kopyalandı',
+  'fov.custom': 'Alan boyutu, yay dakikası cinsinden (3 ile 15 arası)',
+  'fov.err.nan': '{min} ile {max} arasında bir yay dakikası değeri yaz.',
+  'fov.err.range': 'Alan {min}′ ile {max}′ arasında olabilir. {v}′ kullanılıyor.',
+  'fov.hint': 'Bu hedefin kayıtlı görüntüleri yaklaşık 6′ genişliğinde; bu yüzden {v}′ genişliğindeki alanın dış kısmı boş kalır. Kayıtlı olmayan bir konum, istediğin alan için indirilir.',
   'live.notice': 'Bu konum kayıtlı konumlar arasında yok; görüntüler SPHEREx arşivinden indiriliyor. Bu 15 dakika ya da daha uzun sürebilir. Sayfayı açık bırakabilirsin.',
   'live.barLabel': 'İndirme ilerlemesi',
   'live.bar': '{total} görüntünün {done} tanesi indirildi',

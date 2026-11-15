@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Chip, LiveProgress, LoadStep, PatchRequest, Pt, SkyPatch, TargetId } from './data/types';
-import { CASES, FOV_OPTIONS, KNOWN } from './data/catalog';
+import { CASES, KNOWN } from './data/catalog';
+import { exceedsSaved, parseFovDeg } from './lib/fov';
 import { caseRequest, loadPatch, patchKey, realisticRequest } from './data/provider';
 import { answerKey, evaluate } from './sky/analysis';
 import { lookupName, parseCoords } from './sky/astro';
@@ -21,6 +22,7 @@ import {
 } from './state/viewState';
 import { R } from './ui/realisticText';
 import { errorText } from './data/errors';
+import { num } from './i18n';
 import { isAbort } from './data/realProvider';
 import { useI18n } from './i18n/react';
 import { Reveal } from './screens/Reveal';
@@ -67,9 +69,9 @@ function parseReq(params: URLSearchParams): PatchRequest | null {
   if (!params.has('ra') || !params.has('dec')) return null;
   const ra = Number(params.get('ra'));
   const dec = Number(params.get('dec'));
-  const fov = Number(params.get('fov') ?? 0.1);
   if (!Number.isFinite(ra) || !Number.isFinite(dec) || ra < 0 || ra >= 360 || Math.abs(dec) > 90) return null;
-  const req: PatchRequest = { ra, dec, fovDeg: FOV_OPTIONS.some((o) => o.value === fov) ? fov : 0.1 };
+  // Any field the data service accepts (3 to 15 arcminutes) is kept, not only the three buttons.
+  const req: PatchRequest = { ra, dec, fovDeg: parseFovDeg(params.get('fov')) };
   // The practice targets are already loaded, so the same spot opens instantly.
   const isCaseSpot = CASES.some((c) => {
     const r = caseRequest(c.id, req.fovDeg);
@@ -503,6 +505,9 @@ export default function App() {
   return (
     <div className={`app${ready ? ' app-tool' : ''}`}>
       {top('explore', exploreTool)}
+      {ready && caseHere && exceedsSaved(req!.fovDeg) && (
+        <p className="fov-hint" role="note">{t('fov.hint', { v: num(Math.round(req!.fovDeg * 600) / 10, Number.isInteger(Math.round(req!.fovDeg * 600) / 10) ? 0 : 1) })}</p>
+      )}
       {ready && realistic ? (
         <RealisticTool
           key={loadKey(req!)}

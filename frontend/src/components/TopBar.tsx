@@ -8,6 +8,7 @@ import type { Theme } from '../state/theme';
 import { Icon } from './Icon';
 import { LANGS } from '../i18n';
 import { useI18n } from '../i18n/react';
+import { FovInput } from './FovInput';
 import { copyText, iframeSnippet } from '../lib/embedCode';
 import { searchErrorKey, useSearchSubmit, type SearchResult } from '../lib/useSearchSubmit';
 
@@ -183,6 +184,7 @@ export function TopBar({ results, active, theme, onTheme, onHome, onCases, onExp
               ))}
             </div>
           )}
+          {tool.fov && <FovInput valueDeg={tool.fov.value} onChange={tool.fov.onChange} />}
           {tool.share && <ShareMenu url={tool.share.url} embedUrl={tool.share.embedUrl} realistic={tool.share.realistic} />}
           {tool.share && (
             <a className="btn btn-sm" href={tool.share.aladin} target="_blank" rel="noopener noreferrer" title={R.shareAladin} aria-label={R.shareAladin}>
