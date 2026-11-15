@@ -212,3 +212,34 @@ The Share menu has "Copy link" and "Copy embed code". The embed code is this tag
 
 Add `?lang=tr` or `?lang=en` before the `#` to force the language of the frame. A position that is not in the saved set is downloaded live (15 minutes or more);
 the frame then shows the download progress instead of a picture.
+
+## Live downloads, name lookup, field size (front-a notes)
+
+- **Positions that are not in the saved set** are downloaded by the data service from the SPHEREx archive (about 15 minutes for detectors 2, 4 and 6).
+  `realProvider.ts` keeps polling every 2 s and gives up after 25 minutes for such a position (3 minutes for a saved target). Polling stops when the visitor
+  leaves the screen (`AbortController`). The loading screen shows a real progress bar from the `progress` object of the 202 answers, the time so far, and
+  "detector N of M" if the service ever sends the optional `detector_done` / `detector_total` fields (top level or inside `progress`). A failed download is
+  an error in Realistic and Explore, never replaced by demo data.
+- **Search**: the search boxes first understand built-in names and coordinates without the network. Any other text goes to `GET /api/resolve?q=` and the
+  `current` position (already moved to 2026.0) becomes the field centre; a result within 10 arcseconds of a saved target uses that target's exact numbers so the
+  saved copy is found. Messages for 400, 404 and an unreachable service are in `i18n/parts/front-a.ts`.
+- **Field size**: the 3, 6 and 15 arcminute buttons stay; a number box takes 3 to 15 arcminutes (clamped, with a message) and sends degrees (`lib/fov.ts`).
+  `fov` in the address accepts any value from 0.05 to 0.25. For a saved target a field wider than 6 arcminutes shows a note that the saved data covers about 6 arcminutes.
+- **Open in Aladin Lite** sits next to Share (new tab, `noopener noreferrer`). Extra Realistic parameters in the address: `speed`, `invert`, `grid=1`, `smooth=1`,
+  `use=1,3` (visits that take part in the blink) and `ref=prev` (Difference subtracts the previous visit).
+- **Keyboard on the picture**: Tab to the picture, then `+` / `-` zoom, `0` resets, the arrow keys move a zoomed picture (at 1x they step through the visits),
+  Space plays, Enter marks the centre. The mouse wheel is taken only by pictures that can be zoomed (the small ones on the landing page and the board let the page scroll).
+
+### What was checked (by hand, in a real browser, and by tests)
+
+Checked in Chromium at 1440 px and 390 px width, Turkish and English, light and dark theme: the live-download screen (with a mocked slow answer), the failed-download
+screen, name lookup (found, not found), Share menu (copy link, copy embed code), the embedded page at 480x540, 300x700 and 900x360 and inside a real iframe,
+the custom field size (10, 40 and non-numeric input), blink with a subset of visits, difference against the previous visit, keyboard zoom and pan, wheel, drag and
+the zoom buttons on a game case, the phone tabs of Realistic mode (no horizontal scrolling at 390 px), chart tick and read-out clipping, old English candidate verdicts shown in Turkish.
+Contrast of the new buttons was measured in the dark theme (text against its background: 11.5 to 17 : 1); the light theme uses the same design tokens and was looked at, not measured.
+`npm run lint`, `npx vitest run` and `npm run build` pass. This is a list of what was looked at, not a claim of WCAG conformance. Not checked: real screen readers, Safari and Firefox,
+touch pinch-zoom (touch uses the zoom buttons and one-finger drag when zoomed), a live download that really takes 15 minutes.
+
+Aladin Lite: the page opened with `target=` and `fov=` (it loads the right sky tiles and field), but it ignored `survey=` (every survey id tried, including `CDS/P/allWISE/color`,
+`CDS/P/AllWISE/color`, `P/allWISE/color` and the HiPS address) and always opened on DSS2 colour; the visitor can pick AllWISE in its own survey menu.
+
