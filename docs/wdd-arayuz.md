@@ -15,7 +15,7 @@ Arayüz sorumlusu, astronomi bilmeyen birinin bir gökyüzü konumu girip SPHERE
 | Dedektör | SPHEREx'in 6 dedektöründen biri (D1–D6); her biri ayrı bir kızılötesi dalga boyu aralığı |
 | İş (job) | Bir koordinat için kare üretim isteği; arka planda çalışır, durumu sorgulanır |
 | Öz hareket | Bir cismin gökyüzündeki yıllık kayması; mas/yıl |
-| Kaydır ve topla | Verilen öz harekete göre kareleri kaydırıp toplayan mod; sönük hızlı cisimleri ortaya çıkarır |
+| Kaydır ve topla | Verilen öz harekete göre kareleri kaydırıp toplayan mod; sönük hızlı cisimleri biraz daha net gösterir (WISE 0855'te sabit toplama zaten yaklaşık 7,6σ, kaydır-topla yaklaşık 8,0σ verir) |
 | Fark görüntüsü | İki dönemin birbirinden çıkarılmış hali; değişen şeyler kalır |
 
 ## 2. Kapsam
@@ -222,7 +222,7 @@ Beş test hedefi. Tıklanınca hedefin önerilen dedektörü ve moduyla açılı
 |---|---|---|
 | Barnard's Star | epoch | `A nearby star that visibly shifts north between visits.` |
 | Epsilon Indi B | epoch | `A pair of brown dwarfs moving together across the sky.` |
-| WISE 0855 | shift_add | `Too faint for a single image. Shift & add reveals it.` |
+| WISE 0855 | shift_add | `Too faint for a single image. Stacking reveals it; shift & add sharpens it slightly.` |
 | RW Aurigae | epoch | `A young star whose brightness changes.` |
 | R Draconis | epoch | `A pulsating giant star, observed hundreds of times.` |
 
@@ -442,7 +442,7 @@ frontend/
 | Gömme | `embed=1` ile yalnızca oynatıcı görünüyor; bir `<iframe>` içinde çalışıyor |
 | İlerleme | Önbellekte olmayan bir koordinatta çubuk ilerliyor, kareler geldikçe görünüyor |
 | Hata | Dört hata kodunun her biri kendi metnini gösteriyor |
-| Modlar | WISE 0855 kaydır-topla modunda kaynak iki kare arasında beliriyor; Barnard's Star fark modunda ak-kara çift görünüyor |
+| Modlar | WISE 0855 kaydır-topla modunda kaynak iki kare arasında beliriyor (sabit toplamada da yaklaşık 7,6σ ile görünür, bu "yalnızca kaydır-topla ile görünür" anlamına gelmez); Barnard's Star fark modunda ak-kara çift görünüyor |
 | Telefon | 375 piksel genişlikte yatay kaydırma yok |
 | Ekran görüntüleri | 3–4 adet, test ve teslim sorumlusuna verildi |
 

@@ -84,7 +84,7 @@ Claude dokümanları:
    tayf bellekte (0,2–1,3 sn). Frontend'e kalanlar `team-notes.md`'de (tayf mesajı, 0,25° uyarısı). Testler 73 passed.
 3. **Epsilon Indi B kısa dönemler.** Varsayılan 10/30 ayarında 1 ve 3 görüntülük dönemler çıkıyor. Arayüz 30/60
    kullandığı için oyunda sorun yok; `/api/jobs` için karar imaging sahibiyle.
-4. **Parlak yıldız fotometrisi.** Barnard D6 ve R Dra D4-D6 noktaları doymuş (`flagged`). Kanatlardan ölçüm yöntemi yok.
+4. **Parlak yıldız fotometrisi.** Barnard D6 ve R Dra D4-D6 noktaları doymuş (`saturated` ve `lower_limit`; `flagged` artık yalnızca sert bozuk bit demek). Kanatlardan ölçüm yöntemi yok. **Düzeltme (15 Kasım):** bir dönemde görülen "Barnard parlaklığı %32 değişti" sonucu doyma artefaktıdır; D6'da Barnard %1 içinde sabit. R Draconis tüm bantlarda doymuştur, parlaklık değişimi bu veriden güvenle okunmaz.
 5. **Siteye gömülü dosyalar.** Eski PNG dışa aktarımı (`scripts/export_static.py`) yeni frontend'in işine yaramaz.
    İstenirse beş vakanın `/api/patch` yanıtları dosya olarak dışa aktarılabilir (~5 MB). Frontend sahibine sorulmalı.
 6. **Frontend README'sine "Node 22+ gerekli" notu** (frontend sahibinin işi; ekip notlarında yazıyor).

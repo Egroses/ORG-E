@@ -250,7 +250,7 @@ Sonra tüm kesitler medyanla toplanır.
 Ölçülen sonuç (WISE 0855, D6, 45 kesit, öz hareket −8124 ve +673 mas/yıl):
 
 - Tek karede güvenilir tespit yok.
-- Hareketi izleyen medyan toplamada tam beklenen konumda yaklaşık 20σ'lık nokta kaynak.
+- Hareketi izleyen medyan toplamada tam beklenen konumda nokta kaynak görünür. **Düzeltme (15 Kasım):** burada daha önce "yaklaşık 20σ" yazıyordu; bu abartılıydı. Ampirik açıklık sinyal/gürültü oranı yaklaşık 8σ'dır (WISE 0855: görüntü işleme 8,6σ, backend 8,0σ). Sabit toplama da kaynağı zaten gösterir (yaklaşık 7,6σ); kaydır-topla bunu yalnızca biraz iyileştirir (yaklaşık 8,0σ). Yani WISE 0855 "yalnızca kaydır-topla ile görünür" değildir.
 - 43–65 yay saniyesi ötedeki 12 kontrol toplaması −2,1σ ile +2,5σ arasında.
 - Paralaks hesaba katılmadı; pikselin çok altında olduğu için gerekmez.
 
