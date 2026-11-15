@@ -102,5 +102,7 @@ See `python -m imaging.validate`. Last run: Barnard D6 northward shift 10.15" ov
 - The FITS reader supports the layout of the cached cutouts (image HDUs, no BSCALE tricks beyond simple
   scaling); an unexpected file is counted as unreadable.
 - `make_frames` reads cutouts serially in the calling process.
-- Not verified: live (non-cached) data, SPHEREx data other than the five targets, detectors 1, 3 and 5
-  (never run), behaviour under uvicorn with the process pool.
+- Not verified here: SPHEREx data other than the five targets, and the process pool under uvicorn for every case. `imaging/tests` and
+  `imaging.validate` were never run on detectors 1, 3 and 5 when this README was first written; the backend has built patches for
+  detector sets 2,4,6 and 1-6 on the five targets (`backend/docs/tasks.md`, 15 Nov), and a live (non-cached) position was downloaded
+  through `/api/patch` on 15 Nov (`backend/docs/spectrum-api.md`, section 6; that the patch itself was built from it is not recorded there).

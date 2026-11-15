@@ -4,8 +4,8 @@ Public-facing SPHEREx blink tool for NASA Space Apps 2026, challenge "Planet X a
 Five practice cases (the challenge's test targets) plus free exploration of any coordinates.
 
 ```bash
-npm install
-npm run dev      # http://localhost:5173
+npm install      # Node 22 or newer (Node 21.4 could not run Vite 8 on one team machine; 26 works)
+npm run dev      # http://localhost:5173 (needs the backend on port 8000 for live data, see "Run against real data")
 npm run build    # type-check + production build into dist/
 ```
 
@@ -17,11 +17,12 @@ Deep link straight into explore mode: `/#/explore?ra=133.79&dec=-7.24&fov=0.1` (
 
 ## Status
 
-Runs on **realistic demo data** (`src/data/mockProvider.ts`): real 6.15″ pixel scale, real epoch dates,
-real proper motions, sub-pixel PSF placement, per-epoch noise, one cosmic-ray glitch and a few flagged pixels.
-Motion is never exaggerated. A full-width "DEMO DATA" banner shows while the mock is active (developer switch `?data=mock` only).
+Runs on **real SPHEREx data** from the backend (`GET /api/patch`, `src/data/realProvider.ts`), with saved copies of the five
+practice targets as a fallback (see "Saved copies"). The simulated provider (`src/data/mockProvider.ts`: real pixel scale,
+epoch dates and proper motions, simulated pixels) is only reachable through the developer switch `?data=mock`, which shows a
+full-width red "DEMO DATA" banner. It is never used automatically.
 
-## Plugging in real SPHEREx data
+## Data interface
 
 Everything goes through one interface in `src/data/types.ts`:
 
@@ -36,8 +37,7 @@ A `SkyPatch` is a square cutout, north up / east left, with `frames[epoch][band]
 Bands are D2, D4, D6 (shown as 1.4 / 3.1 / 4.7 µm). Each epoch frame is the stack of all images of that detector
 in that epoch.
 
-To switch: implement a provider that calls the backend and returns this shape, then change the single export in
-`src/data/provider.ts`. Nothing else in the UI needs to change.
+`src/data/provider.ts` is the single place that chooses the source (live backend, saved copy, or the developer-only mock).
 
 ## How answers are checked (practice cases only)
 
@@ -76,7 +76,8 @@ proportions all live in `src/index.css`.
   `data-view="game"`, so a later Realistic view can hide `[data-coaching]` as a unit.
 - **Phone (<= 820 px).** Picture first, then timeline, then a Findings / Layers / Map tab bar that shows one panel at a time.
 - Display-only controls (brightness, contrast) are CSS filters; the stretch (asinh, square root, linear) is shared by all visits.
-- Spectrum is not built; the panel says so instead of drawing a curve.
+- In the Game view the spectrum block still says that no spectrum is shown; the 102-channel spectrum panel lives in Realistic mode
+  (see "Two modes").
 
 ## Layout (older notes)
 
@@ -94,7 +95,7 @@ src/
 Sky Quest now combines its game flow with the measurement tools and design approach of a blink-comparison viewer.
 
 - **Real data provider** (`src/data/realProvider.ts`, `decode.ts`): reads `GET /api/patch` (contract in `docs/patch-api.md`),
-  polls on HTTP 202 every 2 s (gives up after about 3 minutes with a friendly message) and converts to `SkyPatch`
+  polls on HTTP 202 every 2 s (gives up after 3 minutes for a saved target, 25 minutes for any other position, with a friendly message) and converts to `SkyPatch`
   (noise reference = median of all frame noises, masked NaN pixels become 0 and flagged, flag_share >= 51 means flagged).
   A band with no exposure in a visit becomes an all-zero, all-flagged frame and shows "No photo" in the observation map.
 - **Data source order** (`src/data/provider.ts`): live backend (`{VITE_API_BASE}/api/patch`) -> saved real copy shipped with the app
@@ -123,7 +124,7 @@ catalogue propagation and verdicts, changes detector. `npm run build`, `npm run 
 
 ## Known limits
 
-- Dark theme only; no light theme yet. Share link works; `&embed=1` and the spectrum chart are not built.
+- Light is the default theme and a dark theme exists (top bar button). Share link and `embed=1` work (see "Embedding"). A full accessibility audit was not done.
 - Measuring and the changes detector are approximate (saturated stars, crowded fields, faint dots); the interface says so.
 - Game tolerances are in native 6.15 arcsec pixels; real patches use a 3.075 arcsec grid and the answer key rescales for it.
 - The bottom sheet is tap-to-cycle, not draggable.
@@ -167,11 +168,15 @@ percentile cuts and their physical values, blink / difference (choice of referen
 quality layers (flag share, heavily flagged); marked source (position, shift with uncertainty, proper motion, position angle, per-visit table);
 aperture photometry per band and visit in mJy with flagged share and lower limits, flux-versus-date chart, band ratios; catalogue sources in view
 (Gaia when `/api/gaia` answers, else the built-in five); changes in the field; candidates with CSV export; data panel (source, scale, field, visits,
-grouping, exposures per collection, noise in MJy/sr, flagged and no-data shares); spectrum from `/api/spectrum` if the server has it.
+grouping, exposures per collection, noise in MJy/sr, flagged and no-data shares); the 102-channel spectrum panel from `/api/spectrum?mode=102`
+(aperture 1, 2 or 3 px, lower limits, blend warnings from Gaia and CatWISE, `src/data/spectrumApi.ts`, `src/sky/spectrum.ts`), the CatWISE overlay
+(`/api/catwise`) and proper-motion significance (`pm_snr`).
 
-What it does not show: no zodiacal-light layer, no 102-channel spectrum, no model fits (ratios are plain flux ratios). Photometry errors assume
+What it does not show: no zodiacal-light layer, no model fits (ratios are plain flux ratios). The 102 channel edges come from the backend and are
+nominal, not the official SPHEREx ones (`backend/docs/spectrum-api.md`, section 3). Photometry errors assume
 independent pixels, which the resampled grid is not, so they are underestimates. Cutouts are 0.1 degree wide: larger fields have no-data edges.
-The spectrum chart was tested only with a fake response, never against the real backend. Non-cached positions are only served by the real backend with live queries on.
+The spectrum panel is covered by unit tests with fixtures (`src/sky/spectrum.test.ts`); whether it was checked in a browser against the real backend
+is not recorded here (not verified). Non-cached positions are only served by the real backend with live queries on.
 
 **No-data pixels** (masked / NaN in the archive) are painted as hatched mid-grey in both modes, with a legend entry in Realistic mode.
 
@@ -235,7 +240,7 @@ the frame then shows the download progress instead of a picture.
 - **Positions that are not in the saved set** are downloaded by the data service from the SPHEREx archive (about 15 minutes for detectors 2, 4 and 6).
   `realProvider.ts` keeps polling every 2 s and gives up after 25 minutes for such a position (3 minutes for a saved target). Polling stops when the visitor
   leaves the screen (`AbortController`). The loading screen shows a real progress bar from the `progress` object of the 202 answers, the time so far, and
-  "detector N of M" if the service ever sends the optional `detector_done` / `detector_total` fields (top level or inside `progress`). A failed download is
+  "detector N of M" if the service ever sends the optional `detector_done` / `detector_total` fields (top level or inside `progress`; the backend sends them while it downloads, since commit `8995ad4`, together with `eta_s`). A failed download is
   an error in Realistic and Explore, never replaced by demo data.
 - **Search**: the search boxes first understand built-in names and coordinates without the network. Any other text goes to `GET /api/resolve?q=` and the
   `current` position (already moved to 2026.0) becomes the field centre; a result within 10 arcseconds of a saved target uses that target's exact numbers so the
