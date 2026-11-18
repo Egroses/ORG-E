@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/public/favicon.svg" alt="Sky Quest logo" width="88">
+<img src="media/org-e-banner.jpg" alt="Team ORG-E banner" width="100%">
 
 # Sky Quest
 
@@ -63,7 +63,7 @@ PowerPoint files: [English](presentation/SkyQuest_SpaceApps2026_EN.pptx) · [Tü
 | [`pipeline/`](pipeline/README.md) | Downloads SPHEREx cutouts from NASA/IPAC IRSA and keeps a local cache |
 | [`docs/`](docs/) | Design notes and references (mostly in Turkish) |
 | [`presentation/`](presentation/README.md) | The seven-slide deck, English and Turkish |
-| [`media/`](media/) | The recordings and screenshots on this page |
+| [`media/`](media/) | The banner, recordings and screenshots on this page |
 
 To run the app, start with [frontend/README.md](frontend/README.md) and [backend/README.md](backend/README.md).
 
