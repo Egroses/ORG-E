@@ -1,9 +1,26 @@
+<div align="center">
+
+<img src="frontend/public/favicon.svg" alt="Sky Quest logo" width="88">
+
 # Sky Quest
 
-A free web tool that turns real SPHEREx sky images into a flip book, so anyone can catch what moves or changes over time.
+**NASA Space Apps Challenge 2026 · Planet X and SPHEREx**
 
-NASA Space Apps Challenge 2026 · Challenge: [Planet X and SPHEREx](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/) · Team ORG-E:
-Emirhan Gül, Emirhan Kaya, Onur Yüksel, Ramazan Türkyılmaz, Yusuf İhsan Gül
+A free web tool that turns real SPHEREx sky images into a flip book,<br>
+so anyone can catch what moves or changes over time.
+
+[![NASA Space Apps 2026](https://img.shields.io/badge/NASA%20Space%20Apps-2026-0b3d91?style=flat-square)](https://www.spaceappschallenge.org/2026/)
+[![Challenge: Planet X and SPHEREx](https://img.shields.io/badge/Challenge-Planet%20X%20and%20SPHEREx-0e7490?style=flat-square)](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/)
+[![Data: SPHEREx · Gaia DR3](https://img.shields.io/badge/Data-SPHEREx%20%C2%B7%20Gaia%20DR3-0a0a0a?style=flat-square)](#data)
+[![License: MIT](https://img.shields.io/badge/License-MIT-555555?style=flat-square)](LICENSE)
+
+[See it in action](#see-it-in-action) · [Presentation](#presentation) · [Repository](#what-is-in-this-repository) · [Data](#data)
+
+**Team ORG-E** · Emirhan Gül · Emirhan Kaya · Onur Yüksel · Ramazan Türkyılmaz · Yusuf İhsan Gül
+
+</div>
+
+---
 
 ## See it in action
 
